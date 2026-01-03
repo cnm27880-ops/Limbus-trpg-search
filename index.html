@@ -1,0 +1,1621 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- ===== 安全標頭 (透過 meta tag 實現) ===== -->
+    <!-- Content Security Policy: 限制資源載入來源 -->
+    <meta http-equiv="Content-Security-Policy" content="
+        default-src 'self';
+        script-src 'self' 'unsafe-inline';
+        style-src 'self' 'unsafe-inline';
+        img-src 'self' data:;
+        connect-src 'self' https://raw.githubusercontent.com;
+        frame-ancestors 'none';
+        form-action 'self';
+        base-uri 'self';
+    ">
+    <!-- 防止 MIME 類型嗅探攻擊 -->
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <!-- 防止被嵌入 iframe (點擊劫持) -->
+    <meta http-equiv="X-Frame-Options" content="DENY">
+    <!-- 強制 HTTPS -->
+    <meta http-equiv="Strict-Transport-Security" content="max-age=31536000; includeSubDomains">
+    <!-- XSS 過濾器 -->
+    <meta http-equiv="X-XSS-Protection" content="1; mode=block">
+    <!-- Referrer 政策 -->
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    
+    <title>無限恐怖 TRPG 規則書搜尋器</title>
+    
+    <style>
+        :root {
+            /* Limbus Company 風格配色 - 護眼版 */
+            --bg-base: #121214;
+            --bg-elevated: #1a1a1e;
+            --bg-card: #222228;
+            --bg-hover: #2a2a32;
+            --accent-orange: #e07030;
+            --accent-orange-dim: #a05020;
+            --accent-red: #c02030;
+            --accent-red-dim: #801520;
+            --accent-gold: #d4a020;
+            --text-primary: #e8e8ec;
+            --text-secondary: #a0a0a8;
+            --text-dim: #606068;
+            --border: #353540;
+            --border-light: #454550;
+            --highlight: #ffd060;
+            --success: #40a060;
+            --error: #e04040;
+            --radius: 12px;
+            --radius-sm: 8px;
+        }
+        
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body {
+            font-family: "Microsoft JhengHei", "Noto Sans TC", -apple-system, sans-serif;
+            background: var(--bg-base);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+        
+        /* 滾動條 */
+        ::-webkit-scrollbar { width: 10px; height: 10px; }
+        ::-webkit-scrollbar-track { background: var(--bg-base); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 5px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--accent-orange-dim); }
+        
+        /* ===== 頂部標題 ===== */
+        header {
+            background: linear-gradient(135deg, var(--accent-red-dim) 0%, #1a1015 50%, var(--bg-elevated) 100%);
+            padding: 25px 20px;
+            text-align: center;
+            border-bottom: 2px solid var(--accent-red);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        header::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: repeating-linear-gradient(
+                90deg,
+                transparent 0px, transparent 100px,
+                rgba(192, 32, 48, 0.03) 100px, rgba(192, 32, 48, 0.03) 101px
+            );
+            pointer-events: none;
+        }
+        
+        .header-content {
+            position: relative;
+            z-index: 1;
+        }
+        
+        h1 {
+            font-size: 1.8rem;
+            font-weight: 700;
+            letter-spacing: 3px;
+            color: var(--text-primary);
+            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+        
+        /* 深紅色巴士圖標 (SVG) */
+        .bus-icon {
+            width: 48px;
+            height: 48px;
+            filter: drop-shadow(0 0 8px rgba(192, 32, 48, 0.6));
+        }
+        
+        .subtitle {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-top: 8px;
+            letter-spacing: 1px;
+        }
+        
+        /* ===== 主容器 ===== */
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 25px 20px;
+        }
+        
+        /* ===== 載入狀態區 ===== */
+        .load-status-bar {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            padding: 18px 25px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .status-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--text-dim);
+            animation: pulse 1.5s infinite;
+        }
+        
+        .status-indicator.loading { background: var(--accent-orange); }
+        .status-indicator.success { background: var(--success); animation: none; }
+        .status-indicator.error { background: var(--error); animation: none; }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+        
+        .status-text {
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+        }
+        
+        .status-text.success { color: var(--success); }
+        .status-text.error { color: var(--error); }
+        
+        .retry-btn {
+            padding: 8px 18px;
+            background: var(--accent-orange-dim);
+            border: none;
+            border-radius: var(--radius-sm);
+            color: white;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: none;
+        }
+        
+        .retry-btn:hover { background: var(--accent-orange); }
+        .retry-btn.show { display: inline-block; }
+        
+        /* 手動載入備用 */
+        .fallback-upload {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px dashed var(--border);
+            display: none;
+        }
+        
+        .fallback-upload.show { display: block; }
+        
+        .fallback-hint {
+            font-size: 0.85rem;
+            color: var(--text-dim);
+            margin-bottom: 10px;
+        }
+        
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .file-input-wrapper input[type="file"] {
+            position: absolute;
+            left: 0; top: 0;
+            opacity: 0;
+            width: 100%; height: 100%;
+            cursor: pointer;
+        }
+        
+        .file-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: var(--bg-hover);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            border-radius: var(--radius-sm);
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .file-btn:hover {
+            background: var(--accent-orange-dim);
+            border-color: var(--accent-orange-dim);
+            color: white;
+        }
+        
+        /* ===== 搜尋區 ===== */
+        .search-section {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            padding: 25px;
+            margin-bottom: 25px;
+            border: 1px solid var(--border);
+            opacity: 0.5;
+            pointer-events: none;
+            transition: all 0.3s;
+        }
+        
+        .search-section.enabled {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        
+        .search-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .search-title {
+            font-size: 1.1rem;
+            color: var(--accent-orange);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .bookmark-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 18px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--accent-gold);
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .bookmark-btn:hover {
+            background: var(--bg-hover);
+            border-color: var(--accent-gold);
+        }
+        
+        .bookmark-btn .count {
+            background: var(--accent-gold);
+            color: var(--bg-base);
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        
+        .search-box {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+        
+        .search-input {
+            flex: 1;
+            padding: 16px 20px;
+            font-size: 1.05rem;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+            outline: none;
+            transition: all 0.3s ease;
+        }
+        
+        .search-input:focus {
+            border-color: var(--accent-orange);
+            box-shadow: 0 0 0 3px rgba(224, 112, 48, 0.15);
+        }
+        
+        .search-input::placeholder { color: var(--text-dim); }
+        
+        .search-btn {
+            padding: 16px 28px;
+            background: linear-gradient(135deg, var(--accent-orange) 0%, var(--accent-orange-dim) 100%);
+            color: white;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .search-btn:hover {
+            filter: brightness(1.15);
+            transform: translateY(-2px);
+        }
+        
+        .search-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .search-tips {
+            font-size: 0.85rem;
+            color: var(--text-dim);
+            padding: 12px 15px;
+            background: var(--bg-elevated);
+            border-radius: var(--radius-sm);
+            border-left: 3px solid var(--accent-orange-dim);
+        }
+        
+        .search-tips code {
+            background: var(--bg-hover);
+            color: var(--accent-gold);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+        
+        /* 快捷標籤 */
+        .quick-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 18px;
+            padding-top: 18px;
+            border-top: 1px solid var(--border);
+        }
+        
+        .quick-tags-label {
+            color: var(--text-dim);
+            font-size: 0.85rem;
+            margin-right: 5px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .quick-tag {
+            padding: 7px 14px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .quick-tag:hover {
+            background: var(--accent-orange-dim);
+            border-color: var(--accent-orange);
+            color: white;
+            transform: translateY(-2px);
+        }
+        
+        /* ===== 結果區 ===== */
+        .results-container { min-height: 200px; }
+        
+        .results-stats {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 18px 20px;
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            margin-bottom: 20px;
+            border: 1px solid var(--border);
+        }
+        
+        .stats-count {
+            font-size: 1.05rem;
+            color: var(--text-secondary);
+        }
+        
+        .stats-count strong {
+            color: var(--accent-gold);
+            font-size: 1.3rem;
+            margin: 0 3px;
+        }
+        
+        .stats-time {
+            color: var(--text-dim);
+            font-size: 0.85rem;
+        }
+        
+        .results-list {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+        
+        .result-card {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            padding: 22px;
+            border: 1px solid var(--border);
+            border-left: 4px solid var(--accent-orange-dim);
+            transition: all 0.2s ease;
+            position: relative;
+        }
+        
+        .result-card:hover {
+            border-left-color: var(--accent-orange);
+            background: var(--bg-hover);
+            transform: translateX(4px);
+        }
+        
+        .result-card.bookmarked { border-left-color: var(--accent-gold); }
+        
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+            gap: 15px;
+        }
+        
+        .result-title-area { flex: 1; }
+        
+        .result-title {
+            font-size: 1.15rem;
+            font-weight: 600;
+            color: var(--accent-orange);
+            margin-bottom: 5px;
+            line-height: 1.4;
+        }
+        
+        .result-category {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: var(--bg-elevated);
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            border: 1px solid var(--border);
+        }
+        
+        .result-actions { display: flex; gap: 8px; }
+        
+        .star-btn {
+            width: 38px;
+            height: 38px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text-dim);
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .star-btn:hover {
+            background: var(--bg-hover);
+            border-color: var(--accent-gold);
+            color: var(--accent-gold);
+        }
+        
+        .star-btn.active {
+            background: rgba(212, 160, 32, 0.15);
+            border-color: var(--accent-gold);
+            color: var(--accent-gold);
+        }
+        
+        .result-content {
+            font-size: 0.95rem;
+            line-height: 1.85;
+            color: var(--text-secondary);
+            max-height: 180px;
+            overflow: hidden;
+            position: relative;
+            padding: 15px;
+            background: var(--bg-elevated);
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+        }
+        
+        .result-content.expanded { max-height: none; }
+        
+        .result-content::after {
+            content: '';
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            height: 60px;
+            background: linear-gradient(transparent, var(--bg-elevated));
+            pointer-events: none;
+            border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+        }
+        
+        .result-content.expanded::after { display: none; }
+        
+        .result-content mark {
+            background: linear-gradient(135deg, var(--highlight) 0%, #e0a020 100%);
+            color: var(--bg-base);
+            padding: 1px 5px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+        
+        .result-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 15px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border);
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .expand-btn, .link-btn {
+            padding: 10px 18px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-size: 0.88rem;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .expand-btn {
+            background: var(--bg-elevated);
+            color: var(--text-secondary);
+        }
+        
+        .expand-btn:hover {
+            background: var(--bg-hover);
+            border-color: var(--accent-orange-dim);
+            color: var(--text-primary);
+        }
+        
+        .link-btn {
+            background: var(--accent-orange-dim);
+            border-color: var(--accent-orange-dim);
+            color: white;
+            text-decoration: none;
+        }
+        
+        .link-btn:hover {
+            background: var(--accent-orange);
+            border-color: var(--accent-orange);
+        }
+        
+        /* ===== 分頁 ===== */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 25px;
+            flex-wrap: wrap;
+        }
+        
+        .page-btn {
+            min-width: 42px;
+            height: 42px;
+            padding: 0 12px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .page-btn:hover:not(:disabled) {
+            background: var(--bg-hover);
+            border-color: var(--accent-orange-dim);
+            color: var(--text-primary);
+        }
+        
+        .page-btn.active {
+            background: var(--accent-orange);
+            border-color: var(--accent-orange);
+            color: white;
+            font-weight: 600;
+        }
+        
+        .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        
+        /* ===== 無結果 ===== */
+        .no-results {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-dim);
+        }
+        
+        .no-results-icon {
+            font-size: 4rem;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
+        
+        .no-results h3 {
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+        }
+        
+        /* ===== 書籤面板 ===== */
+        .bookmark-panel {
+            position: fixed;
+            top: 0; right: -450px;
+            width: 420px;
+            max-width: 90vw;
+            height: 100vh;
+            background: var(--bg-elevated);
+            border-left: 2px solid var(--accent-gold);
+            z-index: 1000;
+            transition: right 0.35s ease;
+            display: flex;
+            flex-direction: column;
+            box-shadow: -5px 0 30px rgba(0,0,0,0.5);
+        }
+        
+        .bookmark-panel.open { right: 0; }
+        
+        .bookmark-panel-header {
+            padding: 20px;
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .bookmark-panel-title {
+            font-size: 1.2rem;
+            color: var(--accent-gold);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .close-panel-btn {
+            width: 36px;
+            height: 36px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text-dim);
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .close-panel-btn:hover {
+            background: var(--accent-red-dim);
+            border-color: var(--accent-red);
+            color: white;
+        }
+        
+        .bookmark-panel-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+        }
+        
+        .bookmark-item {
+            background: var(--bg-card);
+            border-radius: var(--radius-sm);
+            padding: 15px;
+            margin-bottom: 12px;
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--accent-gold);
+        }
+        
+        .bookmark-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }
+        
+        .bookmark-item-title {
+            font-weight: 600;
+            color: var(--accent-orange);
+            font-size: 0.95rem;
+            flex: 1;
+        }
+        
+        .remove-bookmark-btn {
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            cursor: pointer;
+            padding: 5px;
+            font-size: 1rem;
+            transition: color 0.2s;
+        }
+        
+        .remove-bookmark-btn:hover { color: var(--accent-red); }
+        
+        .bookmark-item-preview {
+            font-size: 0.85rem;
+            color: var(--text-dim);
+            line-height: 1.6;
+            max-height: 60px;
+            overflow: hidden;
+        }
+        
+        .bookmark-item-link {
+            display: inline-block;
+            margin-top: 10px;
+            font-size: 0.8rem;
+            color: var(--accent-orange-dim);
+            text-decoration: none;
+        }
+        
+        .bookmark-item-link:hover {
+            color: var(--accent-orange);
+            text-decoration: underline;
+        }
+        
+        .bookmark-empty {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-dim);
+        }
+        
+        /* 遮罩 */
+        .overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6);
+            z-index: 999;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+        }
+        
+        .overlay.show { opacity: 1; visibility: visible; }
+        
+        /* ===== 頁尾 ===== */
+        footer {
+            text-align: center;
+            padding: 20px;
+            color: var(--text-dim);
+            font-size: 0.8rem;
+            border-top: 1px solid var(--border);
+            margin-top: 40px;
+        }
+        
+        footer a {
+            color: var(--accent-orange-dim);
+            text-decoration: none;
+        }
+        
+        footer a:hover { text-decoration: underline; }
+        
+        /* ===== RWD ===== */
+        @media (max-width: 768px) {
+            h1 { font-size: 1.4rem; letter-spacing: 1px; }
+            .bus-icon { width: 36px; height: 36px; }
+            .container { padding: 15px; }
+            .search-box { flex-direction: column; }
+            .search-btn { width: 100%; justify-content: center; }
+            .result-header { flex-direction: column; }
+            .result-actions { position: absolute; top: 15px; right: 15px; }
+            .result-footer { flex-direction: column; }
+            .result-footer > * { width: 100%; text-align: center; justify-content: center; }
+            .results-stats { flex-direction: column; gap: 8px; text-align: center; }
+            .search-header { flex-direction: column; align-items: stretch; }
+            .bookmark-btn { justify-content: center; }
+            .load-status-bar { flex-direction: column; text-align: center; }
+        }
+        
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="header-content">
+        <h1>
+            <!-- 深紅色巴士 SVG 圖標 -->
+            <svg class="bus-icon" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+                <!-- 車身主體 -->
+                <rect x="4" y="18" width="56" height="28" rx="4" fill="#8B1E3F"/>
+                <!-- 車頂 -->
+                <rect x="8" y="14" width="48" height="6" rx="2" fill="#6B1830"/>
+                <!-- 窗戶 -->
+                <rect x="10" y="22" width="10" height="10" rx="2" fill="#1a1a2e"/>
+                <rect x="24" y="22" width="10" height="10" rx="2" fill="#1a1a2e"/>
+                <rect x="38" y="22" width="10" height="10" rx="2" fill="#1a1a2e"/>
+                <!-- 前擋風玻璃 -->
+                <rect x="50" y="22" width="8" height="12" rx="2" fill="#2a2a3e"/>
+                <!-- 車門 -->
+                <rect x="10" y="34" width="8" height="10" rx="1" fill="#6B1830"/>
+                <rect x="12" y="36" width="4" height="6" rx="1" fill="#1a1a2e"/>
+                <!-- 車燈 -->
+                <circle cx="56" cy="40" r="3" fill="#FFD060"/>
+                <circle cx="8" cy="40" r="2" fill="#FF4040"/>
+                <!-- 輪子 -->
+                <circle cx="16" cy="48" r="6" fill="#333"/>
+                <circle cx="16" cy="48" r="3" fill="#555"/>
+                <circle cx="48" cy="48" r="6" fill="#333"/>
+                <circle cx="48" cy="48" r="3" fill="#555"/>
+                <!-- 裝飾線條 -->
+                <line x1="4" y1="36" x2="60" y2="36" stroke="#FFD060" stroke-width="1"/>
+                <!-- 車牌 -->
+                <rect x="26" y="40" width="12" height="4" rx="1" fill="#222"/>
+                <text x="32" y="43.5" font-size="3" fill="#FFF" text-anchor="middle" font-family="monospace">INF</text>
+            </svg>
+            <span>無限恐怖 TRPG 規則書搜尋器</span>
+        </h1>
+        <p class="subtitle">全文檢索 · 書籤收藏 · 快速定位</p>
+    </div>
+</header>
+
+<div class="container">
+    
+    <!-- 載入狀態 -->
+    <div class="load-status-bar" id="loadStatusBar">
+        <div class="status-left">
+            <div class="status-indicator loading" id="statusIndicator"></div>
+            <span class="status-text" id="statusText">正在載入規則書資料...</span>
+        </div>
+        <button class="retry-btn" id="retryBtn" onclick="loadData()">🔄 重試</button>
+        
+        <div class="fallback-upload" id="fallbackUpload">
+            <div class="fallback-hint">⚠️ 自動載入失敗？可手動選擇檔案：</div>
+            <div class="file-input-wrapper">
+                <div class="file-btn">📄 選擇 txt 檔案</div>
+                <input type="file" id="fileInput" accept=".txt">
+            </div>
+        </div>
+    </div>
+    
+    <!-- 搜尋區 -->
+    <div class="search-section" id="searchSection">
+        <div class="search-header">
+            <div class="search-title">
+                <span>🔍</span>
+                <span>規則搜尋</span>
+            </div>
+            <button class="bookmark-btn" id="bookmarkBtn" onclick="toggleBookmarkPanel()">
+                <span>⭐</span>
+                <span>我的書籤</span>
+                <span class="count" id="bookmarkCount">0</span>
+            </button>
+        </div>
+        
+        <div class="search-box">
+            <input type="text" class="search-input" id="searchInput" 
+                   placeholder="輸入關鍵字搜尋... (例如: 刀劍、生命值、槍械)"
+                   maxlength="100"
+                   autocomplete="off">
+            <button class="search-btn" id="searchBtn" onclick="performSearch()" disabled>
+                <span>🔍</span>
+                <span>搜尋</span>
+            </button>
+        </div>
+        
+        <div class="search-tips">
+            💡 搜尋技巧：用 <code>空格</code> 同時包含多個詞 | 用 <code>|</code> 符號表示「或」
+        </div>
+        
+        <div class="quick-tags">
+            <span class="quick-tags-label">⚡ 快速搜尋：</span>
+            <button class="quick-tag" onclick="quickSearch('生命值')">生命值</button>
+            <button class="quick-tag" onclick="quickSearch('傷害')">傷害</button>
+            <button class="quick-tag" onclick="quickSearch('防禦')">防禦</button>
+            <button class="quick-tag" onclick="quickSearch('刀 劍')">刀劍</button>
+            <button class="quick-tag" onclick="quickSearch('槍')">槍械</button>
+            <button class="quick-tag" onclick="quickSearch('弓')">弓箭</button>
+            <button class="quick-tag" onclick="quickSearch('法術')">法術</button>
+            <button class="quick-tag" onclick="quickSearch('血統')">血統</button>
+            <button class="quick-tag" onclick="quickSearch('技能樹')">技能樹</button>
+            <button class="quick-tag" onclick="quickSearch('附加成功')">附加成功</button>
+            <button class="quick-tag" onclick="quickSearch('檢定')">檢定</button>
+            <button class="quick-tag" onclick="quickSearch('豁免')">豁免</button>
+        </div>
+    </div>
+    
+    <!-- 結果區 -->
+    <div class="results-container" id="resultsContainer"></div>
+    
+</div>
+
+<footer>
+    資料來源：<a href="https://www.hktrpg.com/INF/2.35Christmas.html" target="_blank" rel="noopener noreferrer">無限恐怖 TRPG 2.35 規則書</a>
+    | 本工具僅供個人學習使用
+</footer>
+
+<!-- 書籤面板 -->
+<div class="overlay" id="overlay" onclick="toggleBookmarkPanel()"></div>
+<div class="bookmark-panel" id="bookmarkPanel">
+    <div class="bookmark-panel-header">
+        <div class="bookmark-panel-title">
+            <span>⭐</span>
+            <span>我的書籤</span>
+        </div>
+        <button class="close-panel-btn" onclick="toggleBookmarkPanel()">✕</button>
+    </div>
+    <div class="bookmark-panel-content" id="bookmarkList"></div>
+</div>
+
+<script>
+// ===============================================================
+// 安全措施說明：
+// 1. CSP (Content-Security-Policy) - 在 <head> 中設定，限制資源來源
+// 2. XSS 防護 - 所有使用者輸入都經過 escapeHtml() 處理
+// 3. 輸入驗證 - 限制搜尋長度、過濾特殊字元
+// 4. 安全的 DOM 操作 - 使用 textContent 而非 innerHTML (關鍵位置)
+// 5. 錯誤處理 - 不暴露技術細節給使用者
+// 6. URL 驗證 - 只允許白名單網域的連結
+// ===============================================================
+
+'use strict';
+
+// ================= 配置 =================
+const CONFIG = Object.freeze({
+    // ⚠️ 請將此 URL 改為你的 GitHub Raw 連結
+    // 格式：https://raw.githubusercontent.com/你的帳號/repo名稱/main/規則純文字.txt
+    DATA_URL: 'https://raw.githubusercontent.com/你的帳號/inf-trpg-search/main/規則純文字.txt',
+    
+    // 允許的外部連結網域 (白名單)
+    ALLOWED_DOMAINS: ['www.hktrpg.com', 'hktrpg.com'],
+    
+    // 搜尋設定
+    MAX_QUERY_LENGTH: 100,
+    MIN_QUERY_LENGTH: 1,
+    RESULTS_PER_PAGE: 15,
+    DEBOUNCE_MS: 300,
+    
+    // localStorage key
+    STORAGE_KEY: 'inf_trpg_bookmarks_v2'
+});
+
+// ================= 全局狀態 =================
+let allData = [];
+let currentResults = [];
+let currentPage = 1;
+let searchTerms = [];
+let bookmarks = {};
+let debounceTimer = null;
+let isDataLoaded = false;
+
+// ================= 安全工具函式 =================
+
+/**
+ * HTML 實體編碼 - 防止 XSS 攻擊
+ * @param {string} text - 原始文字
+ * @returns {string} - 編碼後的安全文字
+ */
+function escapeHtml(text) {
+    if (typeof text !== 'string') return '';
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;',
+        '/': '&#x2F;',
+        '`': '&#x60;',
+        '=': '&#x3D;'
+    };
+    return text.replace(/[&<>"'`=\/]/g, char => map[char]);
+}
+
+/**
+ * 正則表達式特殊字元跳脫
+ * @param {string} string - 原始字串
+ * @returns {string} - 跳脫後的字串
+ */
+function escapeRegex(string) {
+    if (typeof string !== 'string') return '';
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * 驗證並清理搜尋輸入
+ * @param {string} input - 使用者輸入
+ * @returns {string} - 清理後的輸入
+ */
+function sanitizeSearchInput(input) {
+    if (typeof input !== 'string') return '';
+    
+    // 1. 移除首尾空白
+    let cleaned = input.trim();
+    
+    // 2. 限制長度
+    if (cleaned.length > CONFIG.MAX_QUERY_LENGTH) {
+        cleaned = cleaned.substring(0, CONFIG.MAX_QUERY_LENGTH);
+    }
+    
+    // 3. 移除控制字元和零寬字元
+    cleaned = cleaned.replace(/[\x00-\x1F\x7F\u200B-\u200D\uFEFF]/g, '');
+    
+    // 4. 標準化空白
+    cleaned = cleaned.replace(/\s+/g, ' ');
+    
+    return cleaned;
+}
+
+/**
+ * 驗證 URL 是否在白名單中
+ * @param {string} url - 要驗證的 URL
+ * @returns {boolean} - 是否安全
+ */
+function isUrlSafe(url) {
+    if (!url || typeof url !== 'string') return false;
+    
+    try {
+        const urlObj = new URL(url);
+        return CONFIG.ALLOWED_DOMAINS.includes(urlObj.hostname);
+    } catch (e) {
+        return false;
+    }
+}
+
+/**
+ * 安全的錯誤日誌 (不暴露敏感資訊)
+ * @param {string} context - 錯誤發生的上下文
+ * @param {Error} error - 錯誤物件
+ */
+function logError(context, error) {
+    // 生產環境只記錄基本資訊
+    console.error(`[${context}] 發生錯誤`);
+    // 開發時可以打開下面這行查看詳細錯誤
+    // console.error(error);
+}
+
+// ================= 初始化 =================
+document.addEventListener('DOMContentLoaded', () => {
+    loadBookmarks();
+    updateBookmarkCount();
+    setupEventListeners();
+    loadData();
+});
+
+function setupEventListeners() {
+    const input = document.getElementById('searchInput');
+    
+    // 防抖搜尋
+    input.addEventListener('input', () => {
+        clearTimeout(debounceTimer);
+        const value = sanitizeSearchInput(input.value);
+        
+        if (value.length >= CONFIG.MIN_QUERY_LENGTH && isDataLoaded) {
+            debounceTimer = setTimeout(() => performSearch(), CONFIG.DEBOUNCE_MS);
+        }
+    });
+    
+    // Enter 搜尋
+    input.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            clearTimeout(debounceTimer);
+            performSearch();
+        }
+    });
+    
+    // 手動上傳
+    document.getElementById('fileInput').addEventListener('change', handleFileUpload);
+}
+
+// ================= 資料載入 =================
+
+async function loadData() {
+    updateLoadStatus('loading', '正在載入規則書資料...');
+    
+    try {
+        const response = await fetch(CONFIG.DATA_URL, {
+            method: 'GET',
+            mode: 'cors',
+            cache: 'default'
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        
+        const content = await response.text();
+        
+        if (!content || content.length < 1000) {
+            throw new Error('資料內容異常');
+        }
+        
+        parseData(content);
+        onDataLoaded();
+        
+    } catch (error) {
+        logError('loadData', error);
+        updateLoadStatus('error', '自動載入失敗，請手動選擇檔案或點擊重試');
+        document.getElementById('retryBtn').classList.add('show');
+        document.getElementById('fallbackUpload').classList.add('show');
+    }
+}
+
+function handleFileUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    // 驗證檔案類型
+    if (!file.name.toLowerCase().endsWith('.txt')) {
+        updateLoadStatus('error', '請選擇 .txt 檔案');
+        return;
+    }
+    
+    // 驗證檔案大小 (最大 50MB)
+    if (file.size > 50 * 1024 * 1024) {
+        updateLoadStatus('error', '檔案過大，請確認是否為正確的規則書檔案');
+        return;
+    }
+    
+    updateLoadStatus('loading', '正在讀取檔案...');
+    
+    const reader = new FileReader();
+    
+    reader.onload = (e) => {
+        try {
+            parseData(e.target.result);
+            onDataLoaded();
+        } catch (error) {
+            logError('handleFileUpload', error);
+            updateLoadStatus('error', '檔案解析失敗，請確認檔案格式');
+        }
+    };
+    
+    reader.onerror = () => {
+        updateLoadStatus('error', '檔案讀取失敗');
+    };
+    
+    reader.readAsText(file, 'UTF-8');
+}
+
+function onDataLoaded() {
+    isDataLoaded = true;
+    updateLoadStatus('success', `✅ 載入成功！共 ${allData.length.toLocaleString()} 個條目`);
+    document.getElementById('searchSection').classList.add('enabled');
+    document.getElementById('searchBtn').disabled = false;
+    document.getElementById('searchInput').focus();
+    document.getElementById('retryBtn').classList.remove('show');
+    document.getElementById('fallbackUpload').classList.remove('show');
+}
+
+function updateLoadStatus(type, message) {
+    const indicator = document.getElementById('statusIndicator');
+    const text = document.getElementById('statusText');
+    
+    indicator.className = 'status-indicator ' + type;
+    text.className = 'status-text ' + type;
+    text.textContent = message;
+}
+
+// ================= 資料解析 =================
+
+function parseData(content) {
+    allData = [];
+    const lines = content.split('\n');
+    let currentEntry = null;
+    
+    for (let i = 1; i < lines.length; i++) {
+        const line = lines[i];
+        if (!line.trim()) continue;
+        
+        const parts = line.split('\t');
+        
+        if (parts.length >= 4 && parts[2] && parts[2].includes('http')) {
+            if (currentEntry && currentEntry.content.length > 20) {
+                allData.push(currentEntry);
+            }
+            
+            currentEntry = {
+                category: (parts[0] || '未分類').trim().substring(0, 100),
+                filename: (parts[1] || '').trim().substring(0, 200),
+                url: parts[2].trim(),
+                content: cleanContent(parts.slice(3).join('\t'))
+            };
+        } else if (currentEntry) {
+            currentEntry.content += '\n' + cleanContent(line);
+        }
+    }
+    
+    if (currentEntry && currentEntry.content.length > 20) {
+        allData.push(currentEntry);
+    }
+    
+    // 建立索引
+    allData.forEach((entry, index) => {
+        entry.id = index;
+        entry.searchText = (entry.category + ' ' + entry.filename + ' ' + entry.content).toLowerCase();
+    });
+}
+
+function cleanContent(text) {
+    if (typeof text !== 'string') return '';
+    return text
+        .replace(/^["']|["']$/g, '')
+        .replace(/\r\n|\r/g, '\n')
+        .replace(/[ \t]+/g, ' ')
+        .trim();
+}
+
+// ================= 搜尋功能 =================
+
+function performSearch() {
+    if (!isDataLoaded) return;
+    
+    const rawQuery = document.getElementById('searchInput').value;
+    const query = sanitizeSearchInput(rawQuery);
+    
+    if (query.length < CONFIG.MIN_QUERY_LENGTH) return;
+    
+    const startTime = performance.now();
+    
+    // 解析搜尋詞
+    let isOrSearch = false;
+    if (query.includes('|')) {
+        searchTerms = query.split('|').map(t => t.trim().toLowerCase()).filter(t => t.length > 0);
+        isOrSearch = true;
+    } else {
+        searchTerms = query.split(/\s+/).map(t => t.toLowerCase()).filter(t => t.length > 0);
+    }
+    
+    // 限制搜尋詞數量
+    if (searchTerms.length > 10) {
+        searchTerms = searchTerms.slice(0, 10);
+    }
+    
+    // 執行搜尋
+    currentResults = allData.filter(entry => {
+        if (isOrSearch) {
+            return searchTerms.some(term => entry.searchText.includes(term));
+        } else {
+            return searchTerms.every(term => entry.searchText.includes(term));
+        }
+    });
+    
+    const searchTime = (performance.now() - startTime).toFixed(1);
+    currentPage = 1;
+    renderResults(searchTime);
+}
+
+function quickSearch(query) {
+    document.getElementById('searchInput').value = query;
+    performSearch();
+}
+
+// ================= 結果渲染 =================
+
+function renderResults(searchTime) {
+    const container = document.getElementById('resultsContainer');
+    
+    if (currentResults.length === 0) {
+        container.innerHTML = `
+            <div class="no-results">
+                <div class="no-results-icon">🔍</div>
+                <h3>找不到符合的結果</h3>
+                <p>請嘗試其他關鍵字或減少搜尋條件</p>
+            </div>
+        `;
+        return;
+    }
+    
+    const totalPages = Math.ceil(currentResults.length / CONFIG.RESULTS_PER_PAGE);
+    const startIdx = (currentPage - 1) * CONFIG.RESULTS_PER_PAGE;
+    const endIdx = Math.min(startIdx + CONFIG.RESULTS_PER_PAGE, currentResults.length);
+    const pageResults = currentResults.slice(startIdx, endIdx);
+    
+    let html = `
+        <div class="results-stats">
+            <div class="stats-count">找到 <strong>${currentResults.length.toLocaleString()}</strong> 個結果</div>
+            <div class="stats-time">耗時 ${escapeHtml(searchTime)} ms | 第 ${currentPage}/${totalPages} 頁</div>
+        </div>
+        <div class="results-list">
+    `;
+    
+    pageResults.forEach((result) => {
+        const isBookmarked = bookmarks[result.id] !== undefined;
+        const snippet = getSnippet(result.content, searchTerms, 280);
+        const highlightedSnippet = highlightText(snippet, searchTerms);
+        
+        // 安全的 URL 處理
+        const safeUrl = isUrlSafe(result.url) ? escapeHtml(result.url) : '';
+        
+        html += `
+            <div class="result-card ${isBookmarked ? 'bookmarked' : ''}" data-id="${result.id}">
+                <div class="result-header">
+                    <div class="result-title-area">
+                        <div class="result-title">${escapeHtml(result.filename || result.category)}</div>
+                        <div class="result-category">📁 ${escapeHtml(result.category)}</div>
+                    </div>
+                    <div class="result-actions">
+                        <button class="star-btn ${isBookmarked ? 'active' : ''}" 
+                                onclick="toggleBookmark(${result.id})" 
+                                title="${isBookmarked ? '移除書籤' : '加入書籤'}"
+                                aria-label="${isBookmarked ? '移除書籤' : '加入書籤'}">
+                            ${isBookmarked ? '⭐' : '☆'}
+                        </button>
+                    </div>
+                </div>
+                <div class="result-content" id="content-${result.id}">
+                    ${highlightedSnippet}
+                </div>
+                <div class="result-footer">
+                    <button class="expand-btn" onclick="toggleExpand(${result.id})">
+                        <span>📖</span>
+                        <span>展開全文</span>
+                    </button>
+                    ${safeUrl ? `<a class="link-btn" href="${safeUrl}" target="_blank" rel="noopener noreferrer"><span>🔗</span><span>查看原文</span></a>` : ''}
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    
+    if (totalPages > 1) {
+        html += renderPagination(totalPages);
+    }
+    
+    container.innerHTML = html;
+    window.scrollTo({ top: document.getElementById('searchSection').offsetTop - 20, behavior: 'smooth' });
+}
+
+function renderPagination(totalPages) {
+    let html = '<div class="pagination">';
+    
+    html += `<button class="page-btn" onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''} aria-label="上一頁">◀</button>`;
+    
+    const startPage = Math.max(1, currentPage - 2);
+    const endPage = Math.min(totalPages, currentPage + 2);
+    
+    if (startPage > 1) {
+        html += `<button class="page-btn" onclick="goToPage(1)">1</button>`;
+        if (startPage > 2) html += `<span style="color:var(--text-dim);padding:0 5px">...</span>`;
+    }
+    
+    for (let p = startPage; p <= endPage; p++) {
+        html += `<button class="page-btn ${p === currentPage ? 'active' : ''}" onclick="goToPage(${p})">${p}</button>`;
+    }
+    
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) html += `<span style="color:var(--text-dim);padding:0 5px">...</span>`;
+        html += `<button class="page-btn" onclick="goToPage(${totalPages})">${totalPages}</button>`;
+    }
+    
+    html += `<button class="page-btn" onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''} aria-label="下一頁">▶</button>`;
+    html += '</div>';
+    
+    return html;
+}
+
+function goToPage(page) {
+    if (page < 1 || page > Math.ceil(currentResults.length / CONFIG.RESULTS_PER_PAGE)) return;
+    currentPage = page;
+    renderResults('-');
+}
+
+function toggleExpand(id) {
+    if (typeof id !== 'number' || id < 0 || id >= allData.length) return;
+    
+    const contentEl = document.getElementById('content-' + id);
+    if (!contentEl) return;
+    
+    const btn = contentEl.closest('.result-card').querySelector('.expand-btn');
+    const result = allData[id];
+    
+    if (contentEl.classList.contains('expanded')) {
+        contentEl.classList.remove('expanded');
+        const snippet = getSnippet(result.content, searchTerms, 280);
+        contentEl.innerHTML = highlightText(snippet, searchTerms);
+        btn.innerHTML = '<span>📖</span><span>展開全文</span>';
+    } else {
+        contentEl.classList.add('expanded');
+        contentEl.innerHTML = highlightText(result.content, searchTerms);
+        btn.innerHTML = '<span>📕</span><span>收合</span>';
+    }
+}
+
+// ================= 書籤功能 =================
+
+function loadBookmarks() {
+    try {
+        const saved = localStorage.getItem(CONFIG.STORAGE_KEY);
+        if (saved) {
+            const parsed = JSON.parse(saved);
+            // 驗證資料結構
+            if (typeof parsed === 'object' && parsed !== null) {
+                bookmarks = parsed;
+            }
+        }
+    } catch (e) {
+        logError('loadBookmarks', e);
+        bookmarks = {};
+    }
+}
+
+function saveBookmarks() {
+    try {
+        localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify(bookmarks));
+    } catch (e) {
+        logError('saveBookmarks', e);
+    }
+}
+
+function updateBookmarkCount() {
+    const count = Object.keys(bookmarks).length;
+    document.getElementById('bookmarkCount').textContent = count > 99 ? '99+' : count;
+}
+
+function toggleBookmark(id) {
+    if (typeof id !== 'number' || id < 0 || !allData[id]) return;
+    
+    const result = allData[id];
+    
+    if (bookmarks[id]) {
+        delete bookmarks[id];
+    } else {
+        bookmarks[id] = {
+            id: id,
+            filename: result.filename.substring(0, 100),
+            category: result.category.substring(0, 50),
+            url: isUrlSafe(result.url) ? result.url : '',
+            preview: result.content.substring(0, 150) + '...',
+            addedAt: Date.now()
+        };
+    }
+    
+    saveBookmarks();
+    updateBookmarkCount();
+    
+    // 更新 UI
+    const card = document.querySelector(`.result-card[data-id="${id}"]`);
+    if (card) {
+        const btn = card.querySelector('.star-btn');
+        if (bookmarks[id]) {
+            card.classList.add('bookmarked');
+            btn.classList.add('active');
+            btn.innerHTML = '⭐';
+            btn.title = '移除書籤';
+        } else {
+            card.classList.remove('bookmarked');
+            btn.classList.remove('active');
+            btn.innerHTML = '☆';
+            btn.title = '加入書籤';
+        }
+    }
+    
+    renderBookmarkList();
+}
+
+function toggleBookmarkPanel() {
+    const panel = document.getElementById('bookmarkPanel');
+    const overlay = document.getElementById('overlay');
+    
+    panel.classList.toggle('open');
+    overlay.classList.toggle('show');
+    
+    if (panel.classList.contains('open')) {
+        renderBookmarkList();
+    }
+}
+
+function renderBookmarkList() {
+    const container = document.getElementById('bookmarkList');
+    const ids = Object.keys(bookmarks);
+    
+    if (ids.length === 0) {
+        container.innerHTML = `
+            <div class="bookmark-empty">
+                <p style="font-size:2rem;margin-bottom:10px">📑</p>
+                <p>尚未收藏任何規則</p>
+                <p style="font-size:0.85rem;margin-top:10px">點擊搜尋結果的 ☆ 按鈕加入書籤</p>
+            </div>
+        `;
+        return;
+    }
+    
+    // 按加入時間排序 (新的在前)
+    ids.sort((a, b) => (bookmarks[b].addedAt || 0) - (bookmarks[a].addedAt || 0));
+    
+    let html = '';
+    ids.forEach(id => {
+        const bm = bookmarks[id];
+        const safeUrl = isUrlSafe(bm.url) ? escapeHtml(bm.url) : '';
+        
+        html += `
+            <div class="bookmark-item">
+                <div class="bookmark-item-header">
+                    <div class="bookmark-item-title">${escapeHtml(bm.filename || bm.category)}</div>
+                    <button class="remove-bookmark-btn" onclick="removeBookmark(${id})" title="移除書籤" aria-label="移除書籤">✕</button>
+                </div>
+                <div class="bookmark-item-preview">${escapeHtml(bm.preview)}</div>
+                ${safeUrl ? `<a class="bookmark-item-link" href="${safeUrl}" target="_blank" rel="noopener noreferrer">🔗 查看原文</a>` : ''}
+            </div>
+        `;
+    });
+    
+    container.innerHTML = html;
+}
+
+function removeBookmark(id) {
+    if (bookmarks[id]) {
+        delete bookmarks[id];
+        saveBookmarks();
+        updateBookmarkCount();
+        renderBookmarkList();
+        
+        // 更新搜尋結果
+        const card = document.querySelector(`.result-card[data-id="${id}"]`);
+        if (card) {
+            card.classList.remove('bookmarked');
+            const btn = card.querySelector('.star-btn');
+            if (btn) {
+                btn.classList.remove('active');
+                btn.innerHTML = '☆';
+                btn.title = '加入書籤';
+            }
+        }
+    }
+}
+
+// ================= 文字處理 =================
+
+function highlightText(text, terms) {
+    if (!terms || terms.length === 0) return escapeHtml(text);
+    
+    let result = escapeHtml(text);
+    
+    terms.forEach(term => {
+        if (!term || term.length === 0) return;
+        const regex = new RegExp(`(${escapeRegex(term)})`, 'gi');
+        result = result.replace(regex, '<mark>$1</mark>');
+    });
+    
+    return result;
+}
+
+function getSnippet(text, terms, maxLength) {
+    if (typeof text !== 'string') return '';
+    
+    if (!terms || terms.length === 0) {
+        return text.substring(0, maxLength) + (text.length > maxLength ? '...' : '');
+    }
+    
+    let firstPos = text.length;
+    terms.forEach(term => {
+        if (!term) return;
+        const pos = text.toLowerCase().indexOf(term.toLowerCase());
+        if (pos !== -1 && pos < firstPos) firstPos = pos;
+    });
+    
+    const start = Math.max(0, firstPos - 60);
+    const end = Math.min(text.length, start + maxLength);
+    
+    let snippet = text.substring(start, end);
+    if (start > 0) snippet = '...' + snippet;
+    if (end < text.length) snippet = snippet + '...';
+    
+    return snippet;
+}
+</script>
+
+</body>
+</html>
