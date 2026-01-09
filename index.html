@@ -24,7 +24,6 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     
     <style>
-        /* ===== File 2 的核心設計風格 ===== */
         :root {
             --bg-abyss: #0a0a0c;
             --bg-deep: #12121a;
@@ -64,7 +63,6 @@
         ::-webkit-scrollbar-track { background: var(--bg-abyss); }
         ::-webkit-scrollbar-thumb { background: var(--accent-blood-dim); border-radius: 4px; }
 
-        /* Header */
         header {
             background: linear-gradient(135deg, var(--accent-blood-dim) 0%, var(--bg-deep) 40%, var(--bg-abyss) 100%);
             padding: 30px 20px;
@@ -96,7 +94,6 @@
         .subtitle { font-size: 0.85rem; color: var(--text-secondary); margin-top: 8px; }
         .version { display: inline-block; padding: 2px 8px; background: var(--accent-gold); color: #000; font-size: 0.7rem; font-weight: 700; border-radius: 8px; margin-left: 8px; }
 
-        /* Navigation (頂部導航) */
         .main-nav {
             background: var(--bg-deep);
             border-bottom: 1px solid var(--border);
@@ -130,13 +127,11 @@
         .nav-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
         .nav-btn.active { background: var(--accent-blood-dim); color: var(--accent-gold); }
 
-        /* Layout */
         .container { max-width: 1300px; margin: 0 auto; padding: 20px 15px; }
         .page { display: none; animation: fadeIn 0.3s ease; }
         .page.active { display: block; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* Common Components (Cards, Buttons, Inputs) */
         .card {
             background: var(--bg-card);
             border-radius: var(--radius);
@@ -200,7 +195,6 @@
         }
         input:focus, textarea:focus { border-color: var(--accent-gold); }
 
-        /* ===== 搜尋器特定樣式 (整合進來) ===== */
         .search-box-large {
             display: flex; gap: 10px; margin-bottom: 20px;
         }
@@ -230,10 +224,14 @@
         .search-result-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
         .search-result-title { font-size: 1.1rem; font-weight: 700; color: var(--accent-gold); }
         .search-result-meta { font-size: 0.8rem; color: var(--text-dim); background: var(--bg-deep); padding: 2px 8px; border-radius: 10px; }
-        .search-result-content { font-size: 0.95rem; color: var(--text-secondary); line-height: 1.6; white-space: pre-wrap; }
+        .search-result-content { font-size: 0.95rem; color: var(--text-secondary); line-height: 1.6; white-space: pre-wrap; max-height: 150px; overflow: hidden; position: relative; }
+        .search-result-content.expanded { max-height: none; }
+        .search-result-content:not(.expanded)::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 50px; background: linear-gradient(transparent, var(--bg-card)); pointer-events: none; }
+        .search-result-footer { display: flex; gap: 10px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+        .expand-btn { padding: 8px 14px; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-secondary); cursor: pointer; font-size: 0.85rem; transition: all 0.2s; }
+        .expand-btn:hover { background: var(--bg-hover); border-color: var(--accent-gold); color: var(--text-primary); }
         mark { background: var(--accent-gold); color: black; border-radius: 2px; padding: 0 2px; }
 
-        /* 書籤面板 */
         .bookmark-panel {
             position: fixed; top: 0; right: -400px; width: 380px; max-width: 90vw; height: 100vh;
             background: var(--bg-deep); border-left: 2px solid var(--accent-gold);
@@ -247,7 +245,6 @@
         }
         .bookmark-overlay.show { display: block; }
 
-        /* 其他 File 2 的必要樣式 */
         .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
         .tabs { display: flex; gap: 8px; margin-bottom: 18px; }
         .tab-btn { padding: 10px 18px; border: 2px solid var(--border); background: var(--bg-deep); color: var(--text-secondary); border-radius: var(--radius-sm); cursor: pointer; }
@@ -259,7 +256,6 @@
         .stat-input { text-align: center; }
         .stat-input input { text-align: center; font-weight: bold; color: var(--accent-gold); }
         
-        /* 聊天室 */
         .chat-box { height: 400px; display: flex; flex-direction: column; }
         .chat-messages { flex: 1; overflow-y: auto; background: var(--bg-deep); border-radius: var(--radius-sm); padding: 15px; margin-bottom: 10px; }
         .chat-msg { margin-bottom: 10px; display: flex; gap: 10px; }
@@ -268,12 +264,10 @@
         .chat-msg.user .chat-bubble { background: var(--accent-gold); color: black; }
         .chat-msg.ai .chat-bubble { background: var(--bg-elevated); border: 1px solid var(--border); }
 
-        /* Loading */
         .loading-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); z-index: 2000; justify-content: center; align-items: center; flex-direction: column; }
         .spinner { width: 40px; height: 40px; border: 4px solid var(--border); border-top-color: var(--accent-gold); border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* 歷史紀錄 */
         .history-item { background: var(--bg-deep); padding: 15px; border-radius: var(--radius-sm); border-left: 3px solid var(--accent-cyan); margin-bottom: 10px; cursor: pointer; transition: transform 0.2s; }
         .history-item:hover { transform: translateX(5px); background: var(--bg-hover); }
 
@@ -288,12 +282,9 @@
     <p class="subtitle">規則檢索 · 戰力分析 · 戰役模擬 · 自動化輔助</p>
 </header>
 
-<!-- 頂部導航列 (保留 File 2 風格) -->
 <nav class="main-nav">
     <div class="nav-container">
-        <!-- 新增: 搜尋器 (首頁) -->
         <button class="nav-btn active" onclick="switchPage('search')" data-page="search">🔍 規則搜尋</button>
-        <!-- 原 File 2 功能 -->
         <button class="nav-btn" onclick="switchPage('analyze')" data-page="analyze">⚔️ 角卡分析</button>
         <button class="nav-btn" onclick="switchPage('boss')" data-page="boss">👹 BOSS模擬</button>
         <button class="nav-btn" onclick="switchPage('qa')" data-page="qa">🤖 規則問答</button>
@@ -306,7 +297,6 @@
 
 <div class="container">
 
-    <!-- ===== 頁面 1: 規則搜尋器 (原 File 1) ===== -->
     <section class="page active" id="page-search">
         <div class="card">
             <div class="card-title">
@@ -316,12 +306,9 @@
                 </button>
             </div>
             
-            <!-- 搜尋狀態 -->
             <div id="rulesLoadStatus" style="margin-bottom:15px; font-size:0.9rem; color:var(--text-dim);">
                 <span id="loadIndicator" style="color:var(--warning);">●</span> <span id="loadText">正在初始化資料庫...</span>
             </div>
-
-            <!-- 搜尋框 -->
             <div class="search-box-large">
                 <input type="text" class="search-input-lg" id="searchInput" placeholder="輸入關鍵字... (例如: 基因鎖、B級強化、高斯手槍、生命值)">
                 <button class="btn btn-primary" id="searchBtn" onclick="performSearch()" disabled style="min-width:100px;">搜尋</button>
@@ -331,7 +318,6 @@
                 💡 支援多詞搜尋 (空格分隔) | 點擊標籤快速搜尋
             </div>
 
-            <!-- 快速標籤 -->
             <div class="quick-tags">
                 <span class="quick-tag" onclick="quickSearch('基因鎖')">基因鎖</span>
                 <span class="quick-tag" onclick="quickSearch('內力')">內力</span>
@@ -344,12 +330,10 @@
             </div>
         </div>
 
-        <!-- 搜尋結果區 -->
         <div id="searchResults" class="result-list"></div>
         <div id="pagination" style="display:flex; justify-content:center; gap:10px; margin-top:20px;"></div>
     </section>
 
-    <!-- ===== 頁面 2: 角卡分析 (原 File 2, 完整保留) ===== -->
     <section class="page" id="page-analyze">
         <div class="card">
             <div class="card-title">📋 角卡資料輸入</div>
@@ -405,7 +389,6 @@
         </div>
     </section>
 
-    <!-- ===== 頁面 3: BOSS 模擬 (原 File 2, 完整保留) ===== -->
     <section class="page" id="page-boss">
         <div class="card purple">
             <div class="card-title">👹 BOSS 對戰模擬器</div>
@@ -434,7 +417,6 @@
         </div>
     </section>
 
-    <!-- ===== 頁面 4: 規則問答 (原 File 2 + 整合搜尋庫) ===== -->
     <section class="page" id="page-qa">
         <div class="card cyan">
             <div class="card-title">🤖 規則書 AI 助手</div>
@@ -452,7 +434,6 @@
         </div>
     </section>
 
-    <!-- ===== 頁面 5: NPC 生成 (原 File 2) ===== -->
     <section class="page" id="page-npc">
         <div class="card">
             <div class="card-title">🎲 快速 NPC 生成器</div>
@@ -486,7 +467,6 @@
         </div>
     </section>
 
-    <!-- ===== 頁面 6: 設計檢查 (原 File 2) ===== -->
     <section class="page" id="page-checklist">
         <div class="card">
             <div class="card-title">✅ 副本設計檢查清單</div>
@@ -510,7 +490,6 @@
         </div>
     </section>
 
-    <!-- ===== 頁面 7: 歷史紀錄 (原 File 2) ===== -->
     <section class="page" id="page-history">
         <div class="card">
             <div class="card-title">
@@ -528,7 +507,6 @@
         </div>
     </section>
 
-    <!-- ===== 頁面 8: 設定 (原 File 2) ===== -->
     <section class="page" id="page-settings">
         <div class="card">
             <div class="card-title">🔑 API 設定 <span class="save-indicator" id="saveIndicator" style="opacity:0; color:var(--success); margin-left:10px;">✓ 已儲存</span></div>
@@ -555,7 +533,6 @@
     <p> 無限恐怖綜合系統 | 僅供學習使用</p>
 </footer>
 
-<!-- 浮動元件 -->
 <div class="bookmark-overlay" id="bookmarkOverlay" onclick="toggleBookmarks()"></div>
 <div class="bookmark-panel" id="bookmarkPanel">
     <div style="padding:20px; border-bottom:1px solid var(--accent-gold); display:flex; justify-content:space-between; align-items:center;">
@@ -573,32 +550,22 @@
 <script>
 'use strict';
 
-// ================= 全局配置與狀態 =================
 const CONFIG = {
-    // 規則檔案
     RULES_URL: './rules-2.35.txt',
-    
-    // API 端點
     SHEETS_API: 'https://sheets.googleapis.com/v4/spreadsheets',
     GEMINI_API: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
-    
-    // 儲存 Key
     STORAGE_PREFIX: 'inf_st_v3_',
     MAX_HISTORY: 30,
-    
-    // 搜尋設定
     RESULTS_PER_PAGE: 15
 };
 
 let state = {
-    // 規則資料
     rulesData: [],
     searchResults: [],
+    searchTerms: [],
     searchPage: 1,
     isRulesLoaded: false,
     bookmarks: {},
-    
-    // ST工具資料
     sheetsData: null,
     selectedSheets: new Set(),
     charText: '',
@@ -607,67 +574,48 @@ let state = {
     radarChart: null
 };
 
-// ================= 初始化 =================
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. UI 綁定
     setupNavigation();
     setupAutoSave();
-    
-    // 2. 載入資料
     loadRules();
     loadBookmarks();
     loadApiKeys();
     loadHistory();
-    
-    // 3. 搜尋 Enter 鍵
     document.getElementById('searchInput').addEventListener('keypress', (e) => {
         if(e.key === 'Enter') performSearch();
     });
 });
 
-// ================= UI 導航 =================
 function setupNavigation() {
-    // 頁面切換
     window.switchPage = function(pageName) {
-        // 隱藏所有頁面
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-        // 顯示目標頁面
         document.getElementById('page-' + pageName).classList.add('active');
-        // 更新按鈕狀態
-        document.querySelectorAll('.nav-btn').forEach(b => {
-            b.classList.toggle('active', b.dataset.page === pageName);
-        });
-        
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.page === pageName));
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
-    // 分頁切換 (Sheets/Text)
     window.switchTab = function(tabName) {
         document.querySelectorAll('.tab-btn').forEach((b, i) => {
-            if(tabName === 'sheets') b.classList.toggle('active', i === 0);
-            else b.classList.toggle('active', i === 1);
+            b.classList.toggle('active', tabName === 'sheets' ? i === 0 : i === 1);
         });
         document.getElementById('tab-sheets').classList.toggle('active', tabName === 'sheets');
         document.getElementById('tab-text').classList.toggle('active', tabName === 'text');
     };
-    
-    // 書籤面板
+
     window.toggleBookmarks = function() {
         document.getElementById('bookmarkPanel').classList.toggle('open');
         document.getElementById('bookmarkOverlay').classList.toggle('show');
     };
 }
 
-// 載入遮罩
 function showLoading(text) {
     document.getElementById('loadingText').textContent = text;
     document.getElementById('loadingOverlay').style.display = 'flex';
 }
+
 function hideLoading() {
     document.getElementById('loadingOverlay').style.display = 'none';
 }
-
-// ================= 核心：規則載入與搜尋 (整合 File 1) =================
 async function loadRules() {
     const indicator = document.getElementById('loadIndicator');
     const text = document.getElementById('loadText');
@@ -724,14 +672,9 @@ window.performSearch = function() {
     if(!state.isRulesLoaded) return;
     const query = document.getElementById('searchInput').value.trim().toLowerCase();
     if(query.length < 1) return;
-    
-    const terms = query.split(/\s+/); // 空格分隔多關鍵字
-    
-    state.searchResults = state.rulesData.filter(item => {
-        // AND 搜尋：需包含所有關鍵字
-        return terms.every(t => item.searchText.includes(t));
-    });
-    
+
+    state.searchTerms = query.split(/\s+/).filter(t => t.length > 0);
+    state.searchResults = state.rulesData.filter(item => state.searchTerms.every(t => item.searchText.includes(t)));
     state.searchPage = 1;
     renderSearchResults();
 };
@@ -744,46 +687,43 @@ window.quickSearch = function(term) {
 function renderSearchResults() {
     const container = document.getElementById('searchResults');
     const results = state.searchResults;
-    
+
     if(results.length === 0) {
         container.innerHTML = '<div style="text-align:center; padding:30px; color:var(--text-dim);">找不到符合的規則</div>';
         document.getElementById('pagination').innerHTML = '';
         return;
     }
-    
-    // 分頁
+
     const start = (state.searchPage - 1) * CONFIG.RESULTS_PER_PAGE;
     const end = Math.min(start + CONFIG.RESULTS_PER_PAGE, results.length);
     const pageResults = results.slice(start, end);
     const totalPages = Math.ceil(results.length / CONFIG.RESULTS_PER_PAGE);
-    
+
     let html = `<p style="margin-bottom:10px; font-size:0.9rem; color:var(--text-secondary);">找到 ${results.length} 筆資料 (第 ${state.searchPage}/${totalPages} 頁)</p>`;
-    
+
     pageResults.forEach(item => {
         const isBookmarked = state.bookmarks[item.id];
-        // 簡單內容預覽
-        let preview = item.content.substring(0, 300);
-        if(item.content.length > 300) preview += '...';
-        
+        const snippet = getSnippet(item.content, state.searchTerms, 250);
+        const highlighted = highlightText(snippet, state.searchTerms);
+
         html += `
-            <div class="search-result-card">
+            <div class="search-result-card" data-id="${item.id}">
                 <div class="search-result-header">
                     <div>
                         <div class="search-result-title">${escapeHtml(item.filename)}</div>
                         <span class="search-result-meta">📁 ${escapeHtml(item.category)}</span>
                     </div>
-                    <button onclick="toggleBookmark(${item.id})" style="background:none; border:none; font-size:1.5rem; cursor:pointer;">
-                        ${isBookmarked ? '⭐' : '☆'}
-                    </button>
+                    <button onclick="toggleBookmark(${item.id})" style="background:none; border:none; font-size:1.5rem; cursor:pointer;">${isBookmarked ? '⭐' : '☆'}</button>
                 </div>
-                <div class="search-result-content">${escapeHtml(preview)}</div>
-                <div style="margin-top:10px; padding-top:10px; border-top:1px solid var(--border);">
+                <div class="search-result-content" id="content-${item.id}">${highlighted}</div>
+                <div class="search-result-footer">
+                    <button class="expand-btn" onclick="toggleExpand(${item.id})">📖 展開全文</button>
                     <a href="${item.url}" target="_blank" style="color:var(--accent-gold); text-decoration:none; font-size:0.9rem;">🔗 查看原始網頁</a>
                 </div>
             </div>
         `;
     });
-    
+
     container.innerHTML = html;
     renderPagination(totalPages);
 }
@@ -804,7 +744,6 @@ window.changePage = function(delta) {
     window.scrollTo({ top: document.getElementById('searchResults').offsetTop - 100, behavior: 'smooth' });
 };
 
-// ================= 書籤系統 (File 1) =================
 function loadBookmarks() {
     const saved = localStorage.getItem(CONFIG.STORAGE_PREFIX + 'bookmarks');
     if(saved) state.bookmarks = JSON.parse(saved);
@@ -863,9 +802,6 @@ function renderBookmarkList() {
     container.innerHTML = html;
 }
 
-// ================= ST 工具邏輯 (完整保留 File 2) =================
-
-// API Keys
 function loadApiKeys() {
     const sk = localStorage.getItem(CONFIG.STORAGE_PREFIX + 'sheets_key');
     const gk = localStorage.getItem(CONFIG.STORAGE_PREFIX + 'gemini_key');
@@ -897,7 +833,6 @@ function getKey(type) {
     return k;
 }
 
-// Google Sheets Fetch
 window.fetchSheets = async function() {
     try {
         const key = getKey('sheets');
@@ -965,7 +900,6 @@ async function updatePreview(sheetId, key) {
     hideLoading();
 }
 
-// AI Analysis
 window.analyzeCharacters = async function() {
     try {
         const key = getKey('gemini');
@@ -974,7 +908,6 @@ window.analyzeCharacters = async function() {
         
         showLoading('AI 分析中 (可能需要幾秒)...');
         
-        // 使用載入的規則書增強 Prompt
         const keywords = extractKeywords(text);
         const relatedRules = searchRulesForAI(keywords);
         let ruleContext = "";
@@ -1008,7 +941,6 @@ window.analyzeCharacters = async function() {
         state.lastAnalysis = result;
         saveHistory(result);
         
-        // Render
         renderRadar(result.characters);
         let html = '';
         result.characters.forEach(c => {
@@ -1055,14 +987,12 @@ function renderRadar(chars) {
     });
 }
 
-// Helper: AI Context Enhancement
 function extractKeywords(text) {
-    // 簡單提取 [] 或 【】 內的關鍵字
     const regex = /[\[【](.+?)[\]】]/g;
     const matches = [];
     let m;
     while((m = regex.exec(text)) !== null) matches.push(m[1]);
-    return matches.slice(0, 5); // 取前5個
+    return matches.slice(0, 5);
 }
 
 function searchRulesForAI(keywords) {
@@ -1070,7 +1000,6 @@ function searchRulesForAI(keywords) {
     return state.rulesData.filter(r => keywords.some(k => r.filename.includes(k))).slice(0, 3);
 }
 
-// BOSS 模擬
 window.simulateBoss = async function() {
     try {
         const key = getKey('gemini');
@@ -1112,7 +1041,6 @@ window.simulateBoss = async function() {
     }
 };
 
-// Chat
 window.sendChat = async function() {
     const input = document.getElementById('chatInput');
     const msg = input.value.trim();
@@ -1144,7 +1072,6 @@ window.sendChat = async function() {
     }
 };
 
-// NPC Gen
 window.generateNPC = async function() {
     try {
         const key = getKey('gemini');
@@ -1173,7 +1100,6 @@ window.generateNPC = async function() {
     }
 };
 
-// Encounter Tips
 window.getEncounterTips = async function() {
     try {
         const key = getKey('gemini');
@@ -1196,7 +1122,6 @@ window.getEncounterTips = async function() {
     } catch(e) { hideLoading(); }
 };
 
-// History
 function loadHistory() {
     const h = localStorage.getItem(CONFIG.STORAGE_PREFIX + 'history');
     if(h) state.history = JSON.parse(h);
@@ -1237,11 +1162,55 @@ window.clearHistory = function() {
     }
 };
 
-// Utils
 function escapeHtml(text) {
     if (!text) return '';
     return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
+
+function escapeRegex(str) {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function highlightText(text, terms) {
+    if (!terms || !terms.length) return escapeHtml(text);
+    let result = escapeHtml(text);
+    terms.forEach(term => {
+        if (term) result = result.replace(new RegExp(`(${escapeRegex(term)})`, 'gi'), '<mark>$1</mark>');
+    });
+    return result;
+}
+
+function getSnippet(text, terms, maxLen) {
+    if (!text) return '';
+    if (!terms || !terms.length) return text.substring(0, maxLen) + (text.length > maxLen ? '...' : '');
+    let firstPos = text.length;
+    terms.forEach(t => {
+        const pos = text.toLowerCase().indexOf(t);
+        if (pos !== -1 && pos < firstPos) firstPos = pos;
+    });
+    const start = Math.max(0, firstPos - 50);
+    const end = Math.min(text.length, start + maxLen);
+    let snippet = text.substring(start, end);
+    if (start > 0) snippet = '...' + snippet;
+    if (end < text.length) snippet += '...';
+    return snippet;
+}
+
+window.toggleExpand = function(id) {
+    const el = document.getElementById('content-' + id);
+    const btn = el?.closest('.search-result-card')?.querySelector('.expand-btn');
+    if (!el || !btn) return;
+    const item = state.rulesData[id];
+    if (el.classList.contains('expanded')) {
+        el.classList.remove('expanded');
+        el.innerHTML = highlightText(getSnippet(item.content, state.searchTerms, 250), state.searchTerms);
+        btn.textContent = '📖 展開全文';
+    } else {
+        el.classList.add('expanded');
+        el.innerHTML = highlightText(item.content, state.searchTerms);
+        btn.textContent = '📕 收合';
+    }
+};
 
 </script>
 
