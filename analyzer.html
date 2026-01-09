@@ -1023,51 +1023,71 @@ window.analyzeCharacters = async function() {
             ).join('\n');
         }
 
-        const prompt = `你是《無限恐怖》TRPG 2.35 版的【數據流規則專家 ST】。
-請嚴格依據遊戲機制（DP骰池、附加成功、三豁免）分析角色卡，不要用模糊描述。
+        // 計算角色數量（用於提示 AI）
+        const charCount = (text.match(/===== 角色：/g) || []).length ||
+                          (text.match(/角色名/g) || []).length || 1;
 
-【玩家戰力標準表】（用於評級對照）
+        const prompt = `你是《無限恐怖》TRPG 2.35 版的【數據流規則專家 ST】。
+請嚴格依據遊戲機制（DP骰池、附加成功、三豁免）分析角色卡，採用【相對分析模式】。
+
+⚠️ **重要**：這份資料包含 ${charCount} 個角色，請分析**所有角色**，不要遺漏任何一個！
+
+【玩家戰力標準表】（用於參考，但不是評級依據）
 ${JSON.stringify(PLAYER_STANDARDS, null, 2)}
 
-【怪物戰力標準表】（用於 BOSS 戰模擬）
-${JSON.stringify(NPC_RULES.combatBenchmarks, null, 2)}
+【分析模式：相對分析】
+本次分析採用「隊伍內部比較」模式，而非絕對評級：
 
-【分析指令】
-1. **戰鬥數據提取**：
+1. **戰鬥數據提取**（所有角色）：
    - 攻擊 DP（骰池）= 屬性 + 技能 + 裝備加成
    - 附加成功數（每 1 點附加成功 ≈ 3 DP，需換算）
    - 傷害上限 = 武器傷害 + 傷害加成
    - 防禦值 = 基礎防禦 + 護甲 + 減傷
    - 三豁免：強韌（Fortitude）、反射（Reflex）、意志（Will）
+   - HP、先攻
 
-2. **必殺技識別**：
-   - 找出血統技能、傳奇武器效果、特殊能力中的「爆發傷害技」
-   - 標注條件限制和冷卻
+2. **隊伍內部比較**：
+   - 計算每項數據的隊伍平均值
+   - 找出每個角色的相對強項（高於平均 20% 以上）
+   - 找出每個角色的相對弱項（低於平均 20% 以上）
+   - 給出相對評級：
+     * "隊伍第一梯隊" = 多項指標領先
+     * "隊伍核心" = 均衡發展
+     * "隊伍支援" = 特定領域突出
+     * "需要補強" = 多項指標落後
 
-3. **弱點分析**：
-   - 哪個豁免最低？容易被什麼類型控制？
-   - 有沒有致命缺陷？（如：無遠程、無 AOE、無治療）
+3. **必殺技與配合**：
+   - 找出血統技能、傳奇武器效果
+   - 分析角色間的配合潛力
 
 4. **隊伍 BOSS 戰模擬**：
-   - 計算全隊總 DPS（每回合傷害）
+   - 計算全隊總 DPS
    - 對照怪物血量表，推算能擊殺的最高 BOSS 等級
-   - 評估坦克能否承受該等級 BOSS 攻擊
 
-【角色資料】
-${text.substring(0, 15000)}
+【角色資料】（共 ${charCount} 個角色）
+${text.substring(0, 18000)}
 ${ruleContext}
 
 【輸出 JSON 格式】
+⚠️ 必須輸出**所有 ${charCount} 個角色**的分析結果！
+
 \`\`\`json
 {
+  "teamStats": {
+    "avgAttackDP": "隊伍平均攻擊DP",
+    "avgDefense": "隊伍平均防禦",
+    "avgDamageCap": "隊伍平均傷害上限",
+    "avgHP": "隊伍平均HP",
+    "avgSaves": "隊伍平均豁免"
+  },
   "characters": [
     {
       "name": "角色名",
-      "assessedRank": "C",
+      "relativeRank": "隊伍第一梯隊/隊伍核心/隊伍支援/需要補強",
       "combatStats": {
-        "attackDP": "數值或估計值",
+        "attackDP": "數值",
         "autoSuccess": "附加成功數",
-        "effectiveAttack": "換算後總攻擊力 (DP + 附加成功x3)",
+        "effectiveAttack": "換算後總攻擊力",
         "damageCap": "傷害上限",
         "defense": "防禦值",
         "damageReduction": "減傷值",
@@ -1079,17 +1099,22 @@ ${ruleContext}
         "hp": "生命值",
         "initiative": "先攻"
       },
+      "relativeStrengths": [
+        {"stat": "攻擊力", "value": "數值", "vsAvg": "+X% 高於平均"}
+      ],
+      "relativeWeaknesses": [
+        {"stat": "防禦", "value": "數值", "vsAvg": "-X% 低於平均"}
+      ],
       "killerMoves": [
         {"name": "技能名", "damage": "傷害描述", "condition": "使用條件"}
       ],
-      "weaknesses": ["弱點1", "弱點2"],
-      "warnings": ["⚠️ ST 警告"],
-      "roleAnalysis": "戰術定位分析"
+      "roleAnalysis": "在隊伍中的定位與建議",
+      "synergiesWithTeam": ["與誰配合效果最好"]
     }
   ],
   "teamAnalysis": {
     "totalDPS": "全隊每回合總傷害",
-    "burstDamage": "全隊爆發傷害（開大招）",
+    "burstDamage": "全隊爆發傷害",
     "maxBeatableBossRank": "可擊敗的最高 BOSS 等級",
     "estimatedKillRounds": {
       "D": "X 回合",
@@ -1097,14 +1122,15 @@ ${ruleContext}
       "B": "X 回合"
     },
     "tankSurvival": "坦克生存評估",
+    "teamBalance": "隊伍平衡性評估（是否偏科）",
     "criticalWeakness": "隊伍致命弱點",
     "composition": "隊伍組成分析",
-    "synergies": ["配合技1", "配合技2"]
+    "recommendedStrategy": "推薦戰術"
   }
 }
 \`\`\`
 
-請用繁體中文回答，數值盡量給出具體數字或合理估計範圍。`;
+請用繁體中文回答，數值盡量給出具體數字。**務必分析所有 ${charCount} 個角色！**`;
 
         const res = await fetch(`${CONFIG.GEMINI_API}?key=${key}`, {
             method: 'POST',
@@ -1141,13 +1167,13 @@ ${ruleContext}
         state.lastAnalysis = result;
         saveHistory(result);
 
-        // 渲染雷達圖（新標籤）
-        renderCombatRadar(result.characters);
+        // 渲染雷達圖（相對版本）
+        renderRelativeRadar(result.characters, result.teamStats);
 
-        // 渲染角色卡片
+        // 渲染角色卡片（相對版本）
         let html = '';
         result.characters?.forEach(char => {
-            html += renderCombatCharCard(char);
+            html += renderRelativeCharCard(char, result.teamStats);
         });
 
         // 渲染隊伍分析
@@ -1557,6 +1583,14 @@ function renderTeamCombatAnalysis(team) {
                 </div>
                 ` : ''}
 
+                <!-- 隊伍平衡性 -->
+                ${team.teamBalance ? `
+                <div style="background: var(--bg-elevated); padding: 12px; border-radius: var(--radius-sm); margin-bottom: 15px; border-left: 3px solid var(--accent-blue);">
+                    <strong style="color: var(--accent-blue);">⚖️ 隊伍平衡性：</strong>
+                    <span style="color: var(--text-secondary);">${escapeHtml(team.teamBalance)}</span>
+                </div>
+                ` : ''}
+
                 <!-- 配合技 -->
                 ${team.synergies && team.synergies.length ? `
                 <div>
@@ -1571,10 +1605,270 @@ function renderTeamCombatAnalysis(team) {
                 </div>
                 ` : ''}
 
+                <!-- 推薦戰術 -->
+                ${team.recommendedStrategy ? `
+                <div style="background: var(--bg-deep); padding: 12px; border-radius: var(--radius-sm); margin-top: 15px;">
+                    <strong style="color: var(--accent-gold);">🎯 推薦戰術：</strong>
+                    <div style="color: var(--text-secondary); margin-top: 8px; line-height: 1.6;">${escapeHtml(team.recommendedStrategy)}</div>
+                </div>
+                ` : ''}
+
             </div>
         </div>
     `;
 
+    return html;
+}
+
+// ===== 相對分析渲染函式 =====
+
+// 渲染相對分析雷達圖
+function renderRelativeRadar(chars, teamStats) {
+    const ctx = document.getElementById('radarChart').getContext('2d');
+    if (state.radarChart) state.radarChart.destroy();
+
+    const colors = [
+        'rgba(196, 30, 58, 0.6)',
+        'rgba(212, 160, 32, 0.6)',
+        'rgba(52, 152, 219, 0.6)',
+        'rgba(46, 213, 115, 0.6)',
+        'rgba(155, 89, 182, 0.6)',
+        'rgba(255, 107, 53, 0.6)'
+    ];
+
+    // 將數據正規化到 0-10 分數（相對於隊伍平均）
+    function normalizeRelative(value, avg) {
+        if (!avg || avg === 0) return 5;
+        const num = parseInt(value) || 0;
+        const ratio = num / avg;
+        // 平均值為 5，每偏離 20% 增減 1 分
+        return Math.max(0, Math.min(10, 5 + (ratio - 1) * 10));
+    }
+
+    // 解析平均值
+    const avgAtk = parseInt(teamStats?.avgAttackDP) || 50;
+    const avgDef = parseInt(teamStats?.avgDefense) || 30;
+    const avgDmg = parseInt(teamStats?.avgDamageCap) || 20;
+    const avgHP = parseInt(teamStats?.avgHP) || 1000;
+    const avgSave = parseInt(teamStats?.avgSaves) || 20;
+
+    const datasets = chars.slice(0, 6).map((c, i) => {
+        const cs = c.combatStats || {};
+        const saves = cs.saves || {};
+        const avgCharSave = Math.round(
+            ((parseInt(saves.fortitude) || 0) +
+             (parseInt(saves.reflex) || 0) +
+             (parseInt(saves.will) || 0)) / 3
+        );
+
+        return {
+            label: c.name,
+            data: [
+                normalizeRelative(cs.effectiveAttack || cs.attackDP, avgAtk),
+                normalizeRelative(cs.defense, avgDef),
+                normalizeRelative(cs.damageCap, avgDmg),
+                normalizeRelative(avgCharSave, avgSave),
+                normalizeRelative(cs.hp, avgHP),
+                5  // 功能性（固定值）
+            ],
+            backgroundColor: colors[i % colors.length],
+            borderColor: colors[i % colors.length].replace('0.6', '1'),
+            borderWidth: 2
+        };
+    });
+
+    state.radarChart = new Chart(ctx, {
+        type: 'radar',
+        data: {
+            labels: ['攻擊力', '防禦', '爆發傷害', '豁免', '生存力', '功能性'],
+            datasets
+        },
+        options: {
+            scales: {
+                r: {
+                    min: 0,
+                    max: 10,
+                    ticks: {
+                        stepSize: 2,
+                        callback: function(value) {
+                            if (value === 5) return '平均';
+                            if (value === 10) return '頂尖';
+                            if (value === 0) return '弱勢';
+                            return '';
+                        },
+                        color: '#606070'
+                    },
+                    grid: { color: '#333' },
+                    pointLabels: { color: '#aaa', font: { size: 11 } }
+                }
+            },
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { color: '#ccc', padding: 15 }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const labels = ['遠低於平均', '低於平均', '略低於平均', '接近平均', '略高於平均', '高於平均', '遠高於平均'];
+                            const val = Math.round(context.parsed.r);
+                            const idx = Math.min(6, Math.max(0, Math.floor((val / 10) * 6)));
+                            return context.dataset.label + ': ' + labels[idx];
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// 渲染相對分析角色卡片
+function renderRelativeCharCard(char, teamStats) {
+    const cs = char.combatStats || {};
+    const saves = cs.saves || {};
+    const rank = char.relativeRank || '隊伍核心';
+
+    // 相對評級顏色
+    const rankColors = {
+        '隊伍第一梯隊': 'linear-gradient(135deg, #ffd700, #ff8c00)',
+        '隊伍核心': 'linear-gradient(135deg, #3498db, #2471a3)',
+        '隊伍支援': 'linear-gradient(135deg, #9b59b6, #6c3483)',
+        '需要補強': 'linear-gradient(135deg, #95a5a6, #7f8c8d)'
+    };
+
+    let html = `
+        <div class="result-card" style="margin-bottom: 20px;">
+            <div class="result-header">
+                <span class="result-name">${escapeHtml(char.name)}</span>
+                <span style="padding: 6px 16px; border-radius: 20px; font-weight: 700; font-family: 'Noto Sans TC', sans-serif; background: ${rankColors[rank] || rankColors['隊伍核心']}; color: #fff; font-size: 0.85rem;">
+                    ${rank}
+                </span>
+            </div>
+            <div class="result-body">
+
+                <!-- 戰鬥數據區 -->
+                <div style="background: var(--bg-elevated); padding: 15px; border-radius: var(--radius-sm); margin-bottom: 15px;">
+                    <h4 style="color: var(--accent-ember); margin-bottom: 12px;">⚔️ 戰鬥數據</h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 12px; text-align: center;">
+                        <div>
+                            <div style="color: var(--text-dim); font-size: 0.75rem;">攻擊DP</div>
+                            <div style="font-weight: bold; color: var(--accent-gold); font-size: 1.1rem;">${cs.attackDP || '?'}</div>
+                            ${cs.autoSuccess ? `<div style="font-size: 0.7rem; color: var(--accent-ember);">+${cs.autoSuccess} 附加</div>` : ''}
+                        </div>
+                        <div>
+                            <div style="color: var(--text-dim); font-size: 0.75rem;">有效攻擊</div>
+                            <div style="font-weight: bold; color: var(--danger); font-size: 1.1rem;">${cs.effectiveAttack || '?'}</div>
+                        </div>
+                        <div>
+                            <div style="color: var(--text-dim); font-size: 0.75rem;">傷害上限</div>
+                            <div style="font-weight: bold; color: var(--accent-ember);">${cs.damageCap || '?'}</div>
+                        </div>
+                        <div>
+                            <div style="color: var(--text-dim); font-size: 0.75rem;">防禦</div>
+                            <div style="font-weight: bold; color: var(--accent-cyan);">${cs.defense || '?'}</div>
+                            ${cs.damageReduction ? `<div style="font-size: 0.7rem; color: var(--text-dim);">減傷 ${cs.damageReduction}</div>` : ''}
+                        </div>
+                        <div>
+                            <div style="color: var(--text-dim); font-size: 0.75rem;">HP</div>
+                            <div style="font-weight: bold; color: var(--success);">${cs.hp || '?'}</div>
+                        </div>
+                        <div>
+                            <div style="color: var(--text-dim); font-size: 0.75rem;">先攻</div>
+                            <div style="font-weight: bold; color: var(--text-primary);">${cs.initiative || '?'}</div>
+                        </div>
+                    </div>
+
+                    <!-- 三豁免 -->
+                    <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);">
+                        <div style="font-size: 0.8rem; color: var(--text-dim); margin-bottom: 8px;">三豁免</div>
+                        <div style="display: flex; gap: 15px; justify-content: center;">
+                            <span style="color: var(--accent-ember);">強韌 ${saves.fortitude || '?'}</span>
+                            <span style="color: var(--accent-cyan);">反射 ${saves.reflex || '?'}</span>
+                            <span style="color: var(--accent-purple);">意志 ${saves.will || '?'}</span>
+                        </div>
+                    </div>
+                </div>
+    `;
+
+    // 相對強項
+    if (char.relativeStrengths && char.relativeStrengths.length) {
+        html += `
+            <div style="background: rgba(46, 213, 115, 0.1); padding: 12px; border-radius: var(--radius-sm); margin-bottom: 15px; border-left: 3px solid var(--success);">
+                <h4 style="color: var(--success); margin-bottom: 10px;">💪 隊伍內強項</h4>
+                <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+        `;
+        char.relativeStrengths.forEach(s => {
+            html += `
+                <div style="background: var(--bg-deep); padding: 8px 12px; border-radius: var(--radius-sm); font-size: 0.85rem;">
+                    <strong style="color: var(--success);">${escapeHtml(s.stat)}</strong>
+                    <div style="color: var(--text-secondary); font-size: 0.75rem; margin-top: 2px;">${escapeHtml(s.vsAvg)}</div>
+                </div>
+            `;
+        });
+        html += `</div></div>`;
+    }
+
+    // 相對弱項
+    if (char.relativeWeaknesses && char.relativeWeaknesses.length) {
+        html += `
+            <div style="background: rgba(255, 165, 2, 0.1); padding: 12px; border-radius: var(--radius-sm); margin-bottom: 15px; border-left: 3px solid var(--warning);">
+                <h4 style="color: var(--warning); margin-bottom: 10px;">⚠️ 需要注意</h4>
+                <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+        `;
+        char.relativeWeaknesses.forEach(w => {
+            html += `
+                <div style="background: var(--bg-deep); padding: 8px 12px; border-radius: var(--radius-sm); font-size: 0.85rem;">
+                    <strong style="color: var(--warning);">${escapeHtml(w.stat)}</strong>
+                    <div style="color: var(--text-secondary); font-size: 0.75rem; margin-top: 2px;">${escapeHtml(w.vsAvg)}</div>
+                </div>
+            `;
+        });
+        html += `</div></div>`;
+    }
+
+    // 必殺技
+    if (char.killerMoves && char.killerMoves.length) {
+        html += `
+            <div class="result-section">
+                <h4>🔥 必殺技</h4>
+                <ul>
+        `;
+        char.killerMoves.forEach(move => {
+            html += `
+                <li style="border-left-color: var(--danger); background: rgba(255, 71, 87, 0.1);">
+                    <strong style="color: var(--accent-ember);">${escapeHtml(move.name)}</strong>
+                    <div style="font-size: 0.9rem; margin-top: 4px;">${escapeHtml(move.damage)}</div>
+                    ${move.condition ? `<div style="font-size: 0.8rem; color: var(--text-dim); margin-top: 4px;">📋 ${escapeHtml(move.condition)}</div>` : ''}
+                </li>
+            `;
+        });
+        html += `</ul></div>`;
+    }
+
+    // 隊伍配合
+    if (char.synergiesWithTeam && char.synergiesWithTeam.length) {
+        html += `
+            <div style="background: var(--bg-deep); padding: 12px; border-radius: var(--radius-sm); margin-bottom: 15px;">
+                <h4 style="color: var(--accent-purple); margin-bottom: 8px;">🔗 配合建議</h4>
+                <ul style="list-style: none; padding: 0;">
+        `;
+        char.synergiesWithTeam.forEach(s => {
+            html += `<li style="padding: 4px 0; color: var(--text-secondary); font-size: 0.9rem;">• ${escapeHtml(s)}</li>`;
+        });
+        html += `</ul></div>`;
+    }
+
+    // 戰術分析
+    if (char.roleAnalysis) {
+        html += `
+            <div style="background: var(--bg-elevated); padding: 12px; border-radius: var(--radius-sm); margin-top: 15px;">
+                <strong style="color: var(--accent-gold);">💡 定位與建議：</strong>
+                <span style="color: var(--text-secondary);">${escapeHtml(char.roleAnalysis)}</span>
+            </div>
+        `;
+    }
+
+    html += `</div></div>`;
     return html;
 }
 
