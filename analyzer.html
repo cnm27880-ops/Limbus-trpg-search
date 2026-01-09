@@ -476,6 +476,9 @@
             </div>
             <div class="msg error" id="bossError"></div>
             <button class="btn btn-primary" onclick="simulateBoss()" style="width:100%; margin-top:15px;">⚔️ 開始模擬</button>
+            <button class="btn btn-secondary" onclick="checkBossStandards()" style="width:100%; margin-top:10px;">
+                📊 檢查數值是否符合規則書標準
+            </button>
             <div class="sim-result" id="bossResult" style="display:none;">
                 <h4 style="color:var(--accent-gold); margin-bottom:12px;">📊 模擬結果</h4>
                 <div id="bossResultContent"></div>
@@ -641,6 +644,141 @@ const CONFIG = Object.freeze({
     MAX_RULES: 12000,
     MAX_HISTORY: 30,
 });
+
+// ============================================================
+// 無限恐怖 2.35 怪物圖鑑總綱 - NPC 構建規則
+// ============================================================
+const NPC_RULES = {
+    // 1. 基礎屬性構建規則 (主屬性x2, 副屬性x3, 通常x1)
+    statStructure: {
+        "Minion": {
+            rank: "無支線",
+            attr: { pri: 4, sec: 2, norm: 1 },
+            skill: { pri: 3, sec: 2, norm: 1 },
+            desc: "最基礎的雜魚敵人"
+        },
+        "D": {
+            rank: "D",
+            attr: { pri: 6, sec: 4, norm: 2 },
+            skill: { pri: 5, sec: 3, norm: 1 },
+            desc: "初階輪迴者水平"
+        },
+        "C": {
+            rank: "C",
+            attr: { pri: 11, sec: 6, norm: 4 },
+            skill: { pri: 8, sec: 4, norm: 2 },
+            desc: "有1-2個C級強化的輪迴者"
+        },
+        "B": {
+            rank: "B",
+            attr: { pri: 16, sec: 11, norm: 6 },
+            skill: { pri: 10, sec: 5, norm: 3 },
+            desc: "資深輪迴者/基因鎖二階"
+        },
+        "A": {
+            rank: "A",
+            attr: { pri: 21, sec: 16, norm: 8 },
+            skill: { pri: 13, sec: 8, norm: 4 },
+            desc: "頂尖戰力/基因鎖三階以上"
+        },
+        "S": {
+            rank: "S",
+            attr: { pri: 26, sec: 21, norm: 11 },
+            skill: { pri: 15, sec: 10, norm: 5 },
+            desc: "神級存在/基因鎖四階"
+        }
+    },
+
+    // 2. 戰力參考表 (取「普通」標準作為基準線)
+    // 攻擊DP、傷害上限、防禦力、建議HP
+    combatBenchmarks: {
+        "D": { atk: 30, dmgCap: 17, def: 16, hp: "200-400", hpNum: 300 },
+        "C": { atk: 54, dmgCap: 27, def: 36, hp: "800-1500", hpNum: 1000 },
+        "B": { atk: 78, dmgCap: 38, def: 56, hp: "3000-5000", hpNum: 4000 },
+        "A": { atk: 104, dmgCap: 49, def: 76, hp: "10000+", hpNum: 10000 },
+        "S": { atk: 130, dmgCap: 60, def: 96, hp: "無法估量", hpNum: 50000 }
+    },
+
+    // 3. BOSS 模板免疫能力 (規則書標準)
+    bossImmunities: {
+        "D": "免疫自然毒素、疾病、黑暗視覺、無視困難地形",
+        "C": "免疫超自然毒素/疾病/疲勞/震懾/麻痹/精神束縛/措手不及/隱形、盲視",
+        "B": "免疫變形/不良點數/石化/冰封/能量吸取/心靈影響、靈視、免疫多次攻擊減值",
+        "A": "免疫老化、免疫屬性傷害、免疫即死、真實視覺",
+        "S": "免疫解離、免疫屬性吸取、免疫因果律、免疫時間、免疫空間"
+    },
+
+    // 4. 擊殺基礎獎勵
+    rewards: {
+        "D": "500點",
+        "C": "C級支線 + 1000點",
+        "B": "B級支線 + 2000點",
+        "A": "A級支線 + 3000點",
+        "S": "S級支線 + 4000點"
+    },
+
+    // 5. 類型對應的主屬性建議
+    typeAttributes: {
+        "melee": { primary: ["肌肉", "細胞"], secondary: ["敏捷", "反應", "精神"] },
+        "ranged": { primary: ["敏捷", "反應"], secondary: ["感知", "精神", "細胞"] },
+        "mage": { primary: ["智力", "精神"], secondary: ["意志", "感知", "魅力"] },
+        "tank": { primary: ["細胞", "肌肉"], secondary: ["意志", "精神", "反應"] },
+        "assassin": { primary: ["敏捷", "反應"], secondary: ["感知", "肌肉", "智力"] },
+        "support": { primary: ["智力", "魅力"], secondary: ["精神", "意志", "感知"] }
+    }
+};
+
+// ============================================================
+// 無限恐怖 2.35 玩家戰力標準表
+// 單位：DP (骰池)，1 附加成功 ≈ 3 DP
+// ============================================================
+const PLAYER_STANDARDS = {
+    "D": {
+        rank: "D",
+        atk_dp: 30,      // 攻擊骰池
+        dmg_cap: 17,     // 傷害上限
+        def: 16,         // 防禦值
+        save: 14,        // 平均豁免
+        burst: 20,       // 爆發傷害/回合
+        desc: "裝備 1-2 個 D 級強化的輪迴者"
+    },
+    "C": {
+        rank: "C",
+        atk_dp: 54,
+        dmg_cap: 27,
+        def: 36,
+        save: 25,
+        burst: 35,
+        desc: "裝備 1-2 個 C 級強化或同等數值"
+    },
+    "B": {
+        rank: "B",
+        atk_dp: 78,
+        dmg_cap: 38,
+        def: 56,
+        save: 36,
+        burst: 55,
+        desc: "資深輪迴隊成員水平"
+    },
+    "A": {
+        rank: "A",
+        atk_dp: 104,
+        dmg_cap: 49,
+        def: 76,
+        save: 56,
+        burst: 80,
+        desc: "半神/基因鎖四階水平"
+    },
+    "S": {
+        rank: "S",
+        atk_dp: 130,
+        dmg_cap: 60,
+        def: 96,
+        save: 56,
+        burst: 120,
+        desc: "神級存在"
+    }
+};
 
 // ===== 狀態 =====
 let state = {
@@ -863,27 +1001,171 @@ function buildCharText() {
 }
 
 // ===== 角卡分析 =====
-async function analyzeCharacters() {
-    const key = getKey('gemini');
-    const textInput = sanitize(document.getElementById('textInput').value);
-    const finalText = state.charText || textInput;
-    if (!finalText) { showError('analyzeError', '請先輸入角卡資料'); return; }
-    showLoading('AI 分析中...');
-    hideError('analyzeError');
+window.analyzeCharacters = async function() {
     try {
-        const kw = extractKeywords(finalText);
-        const rules = searchRules(kw);
-        const prompt = buildPrompt(finalText, rules);
-        const result = await callGemini(prompt, key);
-        state.lastAnalysis = { data: result, time: Date.now(), kw };
-        saveHistory(result);
-        displayResults(result);
-        hideLoading();
-    } catch (e) {
-        hideLoading();
-        showError('analyzeError', '分析失敗：' + e.message);
+        const key = getKey('gemini');
+        const text = document.getElementById('textInput').value || state.charText;
+        if (!text) {
+            showError('analyzeError', '請先輸入角卡資料');
+            return;
+        }
+
+        showLoading('正在進行規則書級數據分析...');
+        hideError('analyzeError');
+
+        // 提取關鍵字搜尋相關規則
+        const keywords = extractKeywords(text);
+        const relatedRules = searchRules(keywords);
+        let ruleContext = "";
+        if (relatedRules.length > 0) {
+            ruleContext = "\n\n【參考規則條目】\n" + relatedRules.map(r =>
+                `[${r.filename}] ${r.content.substring(0, 300)}`
+            ).join('\n');
+        }
+
+        const prompt = `你是《無限恐怖》TRPG 2.35 版的【數據流規則專家 ST】。
+請嚴格依據遊戲機制（DP骰池、附加成功、三豁免）分析角色卡，不要用模糊描述。
+
+【玩家戰力標準表】（用於評級對照）
+${JSON.stringify(PLAYER_STANDARDS, null, 2)}
+
+【怪物戰力標準表】（用於 BOSS 戰模擬）
+${JSON.stringify(NPC_RULES.combatBenchmarks, null, 2)}
+
+【分析指令】
+1. **戰鬥數據提取**：
+   - 攻擊 DP（骰池）= 屬性 + 技能 + 裝備加成
+   - 附加成功數（每 1 點附加成功 ≈ 3 DP，需換算）
+   - 傷害上限 = 武器傷害 + 傷害加成
+   - 防禦值 = 基礎防禦 + 護甲 + 減傷
+   - 三豁免：強韌（Fortitude）、反射（Reflex）、意志（Will）
+
+2. **必殺技識別**：
+   - 找出血統技能、傳奇武器效果、特殊能力中的「爆發傷害技」
+   - 標注條件限制和冷卻
+
+3. **弱點分析**：
+   - 哪個豁免最低？容易被什麼類型控制？
+   - 有沒有致命缺陷？（如：無遠程、無 AOE、無治療）
+
+4. **隊伍 BOSS 戰模擬**：
+   - 計算全隊總 DPS（每回合傷害）
+   - 對照怪物血量表，推算能擊殺的最高 BOSS 等級
+   - 評估坦克能否承受該等級 BOSS 攻擊
+
+【角色資料】
+${text.substring(0, 15000)}
+${ruleContext}
+
+【輸出 JSON 格式】
+\`\`\`json
+{
+  "characters": [
+    {
+      "name": "角色名",
+      "assessedRank": "C",
+      "combatStats": {
+        "attackDP": "數值或估計值",
+        "autoSuccess": "附加成功數",
+        "effectiveAttack": "換算後總攻擊力 (DP + 附加成功x3)",
+        "damageCap": "傷害上限",
+        "defense": "防禦值",
+        "damageReduction": "減傷值",
+        "saves": {
+          "fortitude": "強韌豁免",
+          "reflex": "反射豁免",
+          "will": "意志豁免"
+        },
+        "hp": "生命值",
+        "initiative": "先攻"
+      },
+      "killerMoves": [
+        {"name": "技能名", "damage": "傷害描述", "condition": "使用條件"}
+      ],
+      "weaknesses": ["弱點1", "弱點2"],
+      "warnings": ["⚠️ ST 警告"],
+      "roleAnalysis": "戰術定位分析"
     }
+  ],
+  "teamAnalysis": {
+    "totalDPS": "全隊每回合總傷害",
+    "burstDamage": "全隊爆發傷害（開大招）",
+    "maxBeatableBossRank": "可擊敗的最高 BOSS 等級",
+    "estimatedKillRounds": {
+      "D": "X 回合",
+      "C": "X 回合",
+      "B": "X 回合"
+    },
+    "tankSurvival": "坦克生存評估",
+    "criticalWeakness": "隊伍致命弱點",
+    "composition": "隊伍組成分析",
+    "synergies": ["配合技1", "配合技2"]
+  }
 }
+\`\`\`
+
+請用繁體中文回答，數值盡量給出具體數字或合理估計範圍。`;
+
+        const res = await fetch(`${CONFIG.GEMINI_API}?key=${key}`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: { temperature: 0.7, maxOutputTokens: 8192 }
+            })
+        });
+
+        const data = await res.json();
+        if (data.error) throw new Error(data.error.message);
+
+        const raw = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!raw) throw new Error('AI 無回應');
+
+        // 解析 JSON
+        const jsonMatch = raw.match(/```json\s*([\s\S]*?)\s*```/);
+        let result;
+        try {
+            result = JSON.parse(jsonMatch ? jsonMatch[1] : raw);
+        } catch {
+            // JSON 解析失敗，顯示原始文字
+            document.getElementById('resultsContainer').innerHTML = `
+                <div style="white-space: pre-wrap; background: var(--bg-deep); padding: 20px; border-radius: var(--radius-sm);">
+                    ${escapeHtml(raw)}
+                </div>
+            `;
+            document.getElementById('analyzeResults').style.display = 'block';
+            hideLoading();
+            return;
+        }
+
+        state.lastAnalysis = result;
+        saveHistory(result);
+
+        // 渲染雷達圖（新標籤）
+        renderCombatRadar(result.characters);
+
+        // 渲染角色卡片
+        let html = '';
+        result.characters?.forEach(char => {
+            html += renderCombatCharCard(char);
+        });
+
+        // 渲染隊伍分析
+        if (result.teamAnalysis) {
+            html += renderTeamCombatAnalysis(result.teamAnalysis);
+        }
+
+        document.getElementById('resultsContainer').innerHTML = html;
+        document.getElementById('analyzeResults').style.display = 'block';
+        document.getElementById('analyzeResults').scrollIntoView({ behavior: 'smooth' });
+        hideLoading();
+
+    } catch(e) {
+        hideLoading();
+        console.error('分析錯誤:', e);
+        showError('analyzeError', '分析失敗: ' + e.message);
+    }
+};
 
 function buildPrompt(charData, rules) {
     let rc = '';
@@ -900,19 +1182,74 @@ function buildPrompt(charData, rules) {
     return '你是無限恐怖 TRPG 資深 ST，請分析角色卡。\n\n## 角色資料\n' + charData.substring(0, 20000) + rc + '\n\n請用 JSON 回覆：\n```json\n{"characters":[{"name":"角色名","powerLevel":"S/A/B/C/D","summary":"定位","stats":{"offense":1-10,"defense":1-10,"mobility":1-10,"control":1-10,"sustain":1-10,"utility":1-10},"coreAbilities":["能力"],"warnings":["⚠️警告"],"weaknesses":["弱點"],"suggestions":["建議"],"relatedRules":["關鍵字"]}],"teamSummary":{"overallPower":"評估","composition":"組成","synergies":["combo"],"gaps":["缺失"]}}\n```\n評級：S=秒殺BOSS, A=高優化, B=有強項, C=均衡, D=新手\n用繁體中文，注意備註中的隱藏能力。';
 }
 
-async function callGemini(prompt, key) {
-    const res = await fetch(CONFIG.GEMINI_API + '?key=' + key, {
+// 統一的 Gemini API 呼叫函式（兼容舊版簽名）
+async function callGemini(prompt, keyOrOptions) {
+    // 兼容舊的簽名 callGemini(prompt, key) 和新的簽名 callGemini(prompt, options)
+    let key;
+    let options = {};
+
+    if (typeof keyOrOptions === 'string') {
+        // 舊的調用方式：callGemini(prompt, key)
+        key = keyOrOptions;
+    } else {
+        // 新的調用方式：callGemini(prompt, options)
+        options = keyOrOptions || {};
+        key = getKey('gemini');
+    }
+
+    const response = await fetch(`${CONFIG.GEMINI_API}?key=${key}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.7, maxOutputTokens: 8192 } })
+        body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+                temperature: options.temperature || 0.7,
+                maxOutputTokens: options.maxTokens || 8192
+            }
+        })
     });
-    if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || 'API失敗'); }
-    const data = await res.json();
+
+    if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error?.message || 'API 呼叫失敗');
+    }
+
+    const data = await response.json();
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) throw new Error('無回應');
-    const m = text.match(/```json\s*([\s\S]*?)\s*```/);
-    if (m) return JSON.parse(m[1]);
-    try { return JSON.parse(text); } catch { return { raw: text }; }
+
+    if (!text) throw new Error('AI 無回應');
+
+    // 如果期望 JSON，嘗試解析
+    if (options.expectJson) {
+        const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/);
+        if (jsonMatch) {
+            try {
+                return JSON.parse(jsonMatch[1]);
+            } catch (e) {
+                return { _raw: text };
+            }
+        }
+        try {
+            return JSON.parse(text);
+        } catch {
+            return { _raw: text };
+        }
+    }
+
+    // 舊的行為：總是嘗試解析 JSON
+    const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/);
+    if (jsonMatch) {
+        try {
+            return JSON.parse(jsonMatch[1]);
+        } catch (e) {
+            return { raw: text };
+        }
+    }
+    try {
+        return JSON.parse(text);
+    } catch {
+        return { raw: text };
+    }
 }
 
 function displayResults(data) {
@@ -960,6 +1297,285 @@ function renderRadar(chars) {
             plugins: { legend: { position: 'bottom', labels: { color: '#e8e8f0', padding: 12, font: { size: 11 } } } }
         }
     });
+}
+
+// ===== 新版戰鬥數據渲染函式 =====
+
+// 渲染戰鬥數據雷達圖
+function renderCombatRadar(chars) {
+    const ctx = document.getElementById('radarChart').getContext('2d');
+    if (state.radarChart) state.radarChart.destroy();
+
+    const colors = [
+        'rgba(196, 30, 58, 0.6)',
+        'rgba(212, 160, 32, 0.6)',
+        'rgba(52, 152, 219, 0.6)',
+        'rgba(46, 213, 115, 0.6)',
+        'rgba(155, 89, 182, 0.6)'
+    ];
+
+    // 將數據正規化到 0-10 分數
+    function normalize(value, max) {
+        const num = parseInt(value) || 0;
+        return Math.min(10, Math.round((num / max) * 10));
+    }
+
+    const datasets = chars.slice(0, 5).map((c, i) => {
+        const cs = c.combatStats || {};
+        const saves = cs.saves || {};
+
+        return {
+            label: c.name,
+            data: [
+                normalize(cs.effectiveAttack || cs.attackDP, 130),  // 攻擊
+                normalize(cs.defense, 96),                          // 防禦
+                normalize(cs.damageCap, 60),                        // 爆發
+                normalize(saves.will || saves.fortitude, 56),       // 豁免
+                normalize(cs.hp, 5000),                             // 生存
+                5  // 功能性（固定值，可根據技能調整）
+            ],
+            backgroundColor: colors[i % colors.length],
+            borderColor: colors[i % colors.length].replace('0.6', '1'),
+            borderWidth: 2
+        };
+    });
+
+    state.radarChart = new Chart(ctx, {
+        type: 'radar',
+        data: {
+            labels: ['攻擊DP', '防禦', '爆發傷害', '豁免', '生存力', '功能性'],
+            datasets
+        },
+        options: {
+            scales: {
+                r: {
+                    min: 0,
+                    max: 10,
+                    ticks: { display: false },
+                    grid: { color: '#333' },
+                    pointLabels: { color: '#aaa', font: { size: 11 } }
+                }
+            },
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { color: '#ccc', padding: 15 }
+                }
+            }
+        }
+    });
+}
+
+// 渲染角色戰鬥卡片
+function renderCombatCharCard(char) {
+    const cs = char.combatStats || {};
+    const saves = cs.saves || {};
+    const rank = char.assessedRank || 'C';
+
+    // 評級顏色
+    const rankColors = {
+        'S': 'linear-gradient(135deg, #ffd700, #ff8c00)',
+        'A': 'linear-gradient(135deg, #c41e3a, #8b1528)',
+        'B': 'linear-gradient(135deg, #9b59b6, #6c3483)',
+        'C': 'linear-gradient(135deg, #3498db, #2471a3)',
+        'D': 'linear-gradient(135deg, #27ae60, #1e8449)'
+    };
+
+    let html = `
+        <div class="result-card" style="margin-bottom: 20px;">
+            <div class="result-header">
+                <span class="result-name">${escapeHtml(char.name)}</span>
+                <span style="padding: 6px 16px; border-radius: 20px; font-weight: 900; font-family: 'Orbitron', sans-serif; background: ${rankColors[rank] || rankColors['C']}; color: ${rank === 'S' ? '#000' : '#fff'};">
+                    ${rank}級
+                </span>
+            </div>
+            <div class="result-body">
+
+                <!-- 戰鬥數據區 -->
+                <div style="background: var(--bg-elevated); padding: 15px; border-radius: var(--radius-sm); margin-bottom: 15px;">
+                    <h4 style="color: var(--accent-ember); margin-bottom: 12px;">⚔️ 戰鬥數據</h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 12px; text-align: center;">
+                        <div>
+                            <div style="color: var(--text-dim); font-size: 0.75rem;">攻擊DP</div>
+                            <div style="font-weight: bold; color: var(--accent-gold); font-size: 1.1rem;">${cs.attackDP || '?'}</div>
+                            ${cs.autoSuccess ? `<div style="font-size: 0.7rem; color: var(--accent-ember);">+${cs.autoSuccess} 附加</div>` : ''}
+                        </div>
+                        <div>
+                            <div style="color: var(--text-dim); font-size: 0.75rem;">有效攻擊</div>
+                            <div style="font-weight: bold; color: var(--danger); font-size: 1.1rem;">${cs.effectiveAttack || '?'}</div>
+                        </div>
+                        <div>
+                            <div style="color: var(--text-dim); font-size: 0.75rem;">傷害上限</div>
+                            <div style="font-weight: bold; color: var(--accent-ember);">${cs.damageCap || '?'}</div>
+                        </div>
+                        <div>
+                            <div style="color: var(--text-dim); font-size: 0.75rem;">防禦</div>
+                            <div style="font-weight: bold; color: var(--accent-cyan);">${cs.defense || '?'}</div>
+                            ${cs.damageReduction ? `<div style="font-size: 0.7rem; color: var(--text-dim);">減傷 ${cs.damageReduction}</div>` : ''}
+                        </div>
+                        <div>
+                            <div style="color: var(--text-dim); font-size: 0.75rem;">HP</div>
+                            <div style="font-weight: bold; color: var(--success);">${cs.hp || '?'}</div>
+                        </div>
+                        <div>
+                            <div style="color: var(--text-dim); font-size: 0.75rem;">先攻</div>
+                            <div style="font-weight: bold; color: var(--text-primary);">${cs.initiative || '?'}</div>
+                        </div>
+                    </div>
+
+                    <!-- 三豁免 -->
+                    <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);">
+                        <div style="font-size: 0.8rem; color: var(--text-dim); margin-bottom: 8px;">三豁免</div>
+                        <div style="display: flex; gap: 15px; justify-content: center;">
+                            <span style="color: var(--accent-ember);">強韌 ${saves.fortitude || '?'}</span>
+                            <span style="color: var(--accent-cyan);">反射 ${saves.reflex || '?'}</span>
+                            <span style="color: var(--accent-purple);">意志 ${saves.will || '?'}</span>
+                        </div>
+                    </div>
+                </div>
+    `;
+
+    // 必殺技
+    if (char.killerMoves && char.killerMoves.length) {
+        html += `
+            <div class="result-section">
+                <h4>🔥 必殺技</h4>
+                <ul>
+        `;
+        char.killerMoves.forEach(move => {
+            html += `
+                <li style="border-left-color: var(--danger); background: rgba(255, 71, 87, 0.1);">
+                    <strong style="color: var(--accent-ember);">${escapeHtml(move.name)}</strong>
+                    <div style="font-size: 0.9rem; margin-top: 4px;">${escapeHtml(move.damage)}</div>
+                    ${move.condition ? `<div style="font-size: 0.8rem; color: var(--text-dim); margin-top: 4px;">📋 ${escapeHtml(move.condition)}</div>` : ''}
+                </li>
+            `;
+        });
+        html += `</ul></div>`;
+    }
+
+    // 弱點
+    if (char.weaknesses && char.weaknesses.length) {
+        html += `
+            <div class="result-section">
+                <h4>🎯 弱點</h4>
+                <ul>${char.weaknesses.map(w => `<li class="weakness">${escapeHtml(w)}</li>`).join('')}</ul>
+            </div>
+        `;
+    }
+
+    // ST 警告
+    if (char.warnings && char.warnings.length) {
+        html += `
+            <div class="result-section">
+                <h4>⚠️ ST 警告</h4>
+                <ul>${char.warnings.map(w => `<li class="warning">${escapeHtml(w)}</li>`).join('')}</ul>
+            </div>
+        `;
+    }
+
+    // 戰術分析
+    if (char.roleAnalysis) {
+        html += `
+            <div style="background: var(--bg-deep); padding: 12px; border-radius: var(--radius-sm); margin-top: 15px;">
+                <strong style="color: var(--accent-gold);">💡 戰術定位：</strong>
+                <span style="color: var(--text-secondary);">${escapeHtml(char.roleAnalysis)}</span>
+            </div>
+        `;
+    }
+
+    html += `</div></div>`;
+    return html;
+}
+
+// 渲染隊伍戰鬥分析
+function renderTeamCombatAnalysis(team) {
+    const maxRank = team.maxBeatableBossRank || 'C';
+    const rankColors = { 'S': '#ffd700', 'A': '#c41e3a', 'B': '#9b59b6', 'C': '#3498db', 'D': '#27ae60' };
+
+    let html = `
+        <div class="result-card" style="border-top: 3px solid var(--accent-gold);">
+            <div class="result-header" style="background: linear-gradient(135deg, rgba(212, 160, 32, 0.15), var(--bg-card));">
+                <span class="result-name">📊 隊伍戰鬥分析</span>
+            </div>
+            <div class="result-body">
+
+                <!-- BOSS 戰模擬 -->
+                <div style="background: var(--bg-elevated); padding: 20px; border-radius: var(--radius-sm); margin-bottom: 20px; text-align: center;">
+                    <div style="font-size: 0.9rem; color: var(--text-dim); margin-bottom: 8px;">可擊敗最高 BOSS 等級</div>
+                    <div style="font-size: 2.5rem; font-weight: 900; font-family: 'Orbitron', sans-serif; color: ${rankColors[maxRank] || '#3498db'};">
+                        ${maxRank}級
+                    </div>
+                    <div style="margin-top: 15px; display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;">
+                        <div>
+                            <div style="color: var(--text-dim); font-size: 0.8rem;">每回合 DPS</div>
+                            <div style="font-weight: bold; color: var(--accent-ember);">${team.totalDPS || '?'}</div>
+                        </div>
+                        <div>
+                            <div style="color: var(--text-dim); font-size: 0.8rem;">爆發傷害</div>
+                            <div style="font-weight: bold; color: var(--danger);">${team.burstDamage || '?'}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 擊殺回合預估 -->
+                ${team.estimatedKillRounds ? `
+                <div style="margin-bottom: 20px;">
+                    <h4 style="color: var(--accent-gold); margin-bottom: 10px;">⏱️ 擊殺回合預估</h4>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        ${Object.entries(team.estimatedKillRounds).map(([rank, rounds]) => `
+                            <div style="background: var(--bg-deep); padding: 10px 15px; border-radius: var(--radius-sm); text-align: center; flex: 1; min-width: 80px;">
+                                <div style="color: ${rankColors[rank]}; font-weight: bold;">${rank}級 BOSS</div>
+                                <div style="font-size: 0.9rem; color: var(--text-secondary);">${rounds}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                ` : ''}
+
+                <!-- 坦克生存評估 -->
+                ${team.tankSurvival ? `
+                <div style="background: rgba(0, 212, 170, 0.1); padding: 12px; border-radius: var(--radius-sm); margin-bottom: 15px; border-left: 3px solid var(--accent-cyan);">
+                    <strong style="color: var(--accent-cyan);">🛡️ 坦克生存評估：</strong>
+                    <span style="color: var(--text-secondary);">${escapeHtml(team.tankSurvival)}</span>
+                </div>
+                ` : ''}
+
+                <!-- 致命弱點 -->
+                ${team.criticalWeakness ? `
+                <div style="background: rgba(255, 71, 87, 0.1); padding: 12px; border-radius: var(--radius-sm); margin-bottom: 15px; border-left: 3px solid var(--danger);">
+                    <strong style="color: var(--danger);">⚠️ 隊伍致命弱點：</strong>
+                    <span style="color: var(--text-secondary);">${escapeHtml(team.criticalWeakness)}</span>
+                </div>
+                ` : ''}
+
+                <!-- 隊伍組成 -->
+                ${team.composition ? `
+                <div style="margin-bottom: 15px;">
+                    <strong style="color: var(--accent-gold);">👥 隊伍組成：</strong>
+                    <span style="color: var(--text-secondary);">${escapeHtml(team.composition)}</span>
+                </div>
+                ` : ''}
+
+                <!-- 配合技 -->
+                ${team.synergies && team.synergies.length ? `
+                <div>
+                    <h4 style="color: var(--accent-purple); margin-bottom: 10px;">🔗 隊伍配合技</h4>
+                    <ul style="list-style: none;">
+                        ${team.synergies.map(s => `
+                            <li style="padding: 8px 12px; background: var(--bg-deep); border-radius: var(--radius-sm); margin-bottom: 6px; border-left: 3px solid var(--accent-purple);">
+                                ${escapeHtml(s)}
+                            </li>
+                        `).join('')}
+                    </ul>
+                </div>
+                ` : ''}
+
+            </div>
+        </div>
+    `;
+
+    return html;
 }
 
 // ===== BOSS 模擬 =====
@@ -1011,6 +1627,97 @@ function displayBossResult(data) {
     tips.innerHTML = th || '<p style="color:var(--text-dim);">無額外建議</p>';
 }
 
+// BOSS 數值標準檢查
+window.checkBossStandards = function() {
+    const hp = parseInt(document.getElementById('bossHp').value) || 0;
+    const atk = parseInt(document.getElementById('bossAtk').value) || 0;
+    const def = parseInt(document.getElementById('bossDef').value) || 0;
+    const dmg = parseInt(document.getElementById('bossDmg').value) || 0;
+
+    // 根據攻擊力反推等級
+    let estimatedRank = 'D';
+    if (atk >= 130) estimatedRank = 'S';
+    else if (atk >= 104) estimatedRank = 'A';
+    else if (atk >= 78) estimatedRank = 'B';
+    else if (atk >= 54) estimatedRank = 'C';
+
+    const std = NPC_RULES.combatBenchmarks[estimatedRank];
+    const immunity = NPC_RULES.bossImmunities[estimatedRank];
+
+    // 計算偏差
+    const atkDiff = atk - std.atk;
+    const defDiff = def - std.def;
+    const dmgDiff = dmg - std.dmgCap;
+
+    let warnings = [];
+    if (def < std.def * 0.7) warnings.push('⚠️ 防禦偏低，容易被秒殺');
+    if (def > std.def * 1.5) warnings.push('⚠️ 防禦過高，玩家可能打不動');
+    if (dmg > std.dmgCap * 1.5) warnings.push('⚠️ 傷害過高，可能秒殺玩家');
+    if (dmg < std.dmgCap * 0.5) warnings.push('⚠️ 傷害偏低，缺乏威脅性');
+    if (hp < parseInt(std.hpNum) * 0.5) warnings.push('⚠️ HP 偏低，可能被速殺');
+
+    let html = `
+        <div style="background: var(--bg-elevated); padding: 20px; border-radius: var(--radius-sm);">
+            <h4 style="color: var(--accent-gold); margin-bottom: 15px;">
+                📊 根據攻擊力推算，這是一隻 <span style="color: var(--accent-ember); font-size: 1.3em;">${estimatedRank}級</span> 怪物
+            </h4>
+
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px;">
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <th style="text-align: left; padding: 8px; color: var(--text-dim);">數值</th>
+                    <th style="text-align: center; padding: 8px; color: var(--text-dim);">你的設定</th>
+                    <th style="text-align: center; padding: 8px; color: var(--text-dim);">${estimatedRank}級標準</th>
+                    <th style="text-align: center; padding: 8px; color: var(--text-dim);">偏差</th>
+                </tr>
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <td style="padding: 8px;">攻擊 DP</td>
+                    <td style="text-align: center; padding: 8px; color: var(--accent-gold);">${atk}</td>
+                    <td style="text-align: center; padding: 8px;">${std.atk}</td>
+                    <td style="text-align: center; padding: 8px; color: ${atkDiff >= 0 ? 'var(--success)' : 'var(--danger)'};">${atkDiff >= 0 ? '+' : ''}${atkDiff}</td>
+                </tr>
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <td style="padding: 8px;">傷害上限</td>
+                    <td style="text-align: center; padding: 8px; color: var(--accent-ember);">${dmg}</td>
+                    <td style="text-align: center; padding: 8px;">${std.dmgCap}</td>
+                    <td style="text-align: center; padding: 8px; color: ${dmgDiff >= 0 ? 'var(--success)' : 'var(--danger)'};">${dmgDiff >= 0 ? '+' : ''}${dmgDiff}</td>
+                </tr>
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <td style="padding: 8px;">防禦力</td>
+                    <td style="text-align: center; padding: 8px; color: var(--accent-cyan);">${def}</td>
+                    <td style="text-align: center; padding: 8px;">${std.def}</td>
+                    <td style="text-align: center; padding: 8px; color: ${defDiff >= 0 ? 'var(--success)' : 'var(--danger)'};">${defDiff >= 0 ? '+' : ''}${defDiff}</td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px;">建議 HP</td>
+                    <td style="text-align: center; padding: 8px; color: var(--success);">${hp}</td>
+                    <td style="text-align: center; padding: 8px;">${std.hp}</td>
+                    <td style="text-align: center; padding: 8px;">-</td>
+                </tr>
+            </table>
+
+            ${warnings.length ? `
+                <div style="background: rgba(255, 71, 87, 0.1); padding: 12px; border-radius: var(--radius-sm); margin-bottom: 15px;">
+                    <strong style="color: var(--danger);">警告</strong>
+                    <ul style="margin: 8px 0 0 20px; color: var(--text-secondary);">
+                        ${warnings.map(w => `<li>${w}</li>`).join('')}
+                    </ul>
+                </div>
+            ` : `
+                <div style="background: rgba(46, 213, 115, 0.1); padding: 12px; border-radius: var(--radius-sm); margin-bottom: 15px;">
+                    <span style="color: var(--success);">✅ 數值符合 ${estimatedRank} 級標準</span>
+                </div>
+            `}
+
+            <div style="background: var(--bg-deep); padding: 12px; border-radius: var(--radius-sm);">
+                <strong style="color: var(--accent-purple);">🛡️ ${estimatedRank}級 BOSS 標準免疫：</strong>
+                <p style="font-size: 0.9rem; color: var(--text-secondary); margin-top: 8px;">${immunity}</p>
+            </div>
+        </div>
+    `;
+
+    document.getElementById('bossTips').innerHTML = html;
+};
+
 // ===== 規則問答 =====
 async function sendChat() {
     const input = document.getElementById('chatInput');
@@ -1039,25 +1746,253 @@ async function sendChat() {
 }
 
 // ===== NPC 生成 =====
-async function generateNPC() {
-    const key = getKey('gemini');
-    const diff = document.getElementById('npcDiff').value;
-    const type = document.getElementById('npcType').value;
-    const desc = sanitize(document.getElementById('npcDesc').value, 300);
-    showLoading('生成NPC...');
-    hideError('npcError');
+window.generateNPC = async function() {
     try {
-        const prompt = '為無限恐怖TRPG生成一個NPC敵人。\n難度：' + diff + '\n類型：' + type + (desc ? '\n描述：' + desc : '') + '\n\n請提供：\n1. 名稱和描述\n2. 屬性數值（力量、敏捷、耐力、智力、感知、決心）\n3. 生命值、防禦、攻擊檢定、傷害、先攻\n4. 特殊能力（2-3個）\n5. 戰術建議\n\n用繁體中文，格式清晰。';
-        const result = await callGemini(prompt, key);
-        const text = result.raw || (typeof result === 'string' ? result : JSON.stringify(result, null, 2));
-        document.getElementById('npcOutput').style.display = 'block';
-        document.getElementById('npcOutput').textContent = text;
-        hideLoading();
-    } catch (e) {
-        hideLoading();
-        showError('npcError', '生成失敗：' + e.message);
-    }
+        showLoading('正在依照怪物圖鑑總綱構建數據...');
+        hideError('npcError');
+
+        // 獲取使用者輸入
+        const diffKey = document.getElementById('npcDiff').value;
+        const type = document.getElementById('npcType').value;
+        const desc = document.getElementById('npcDesc').value || "無特殊描述";
+
+        // 映射 UI 選項到規則書等級
+        const rankMap = {
+            'minion': 'D',
+            'standard': 'C',
+            'elite': 'B',
+            'boss': 'A'
+        };
+        const rank = rankMap[diffKey] || 'C';
+
+        // 取得對應規則
+        const rules = NPC_RULES.statStructure[rank];
+        const combat = NPC_RULES.combatBenchmarks[rank];
+        const immunity = NPC_RULES.bossImmunities[rank];
+        const reward = NPC_RULES.rewards[rank];
+        const typeAttrs = NPC_RULES.typeAttributes[type] || NPC_RULES.typeAttributes['melee'];
+
+        const prompt = `你是《無限恐怖》TRPG 2.35 版的資深 ST。請嚴格按照以下【怪物圖鑑總綱】規則，現場構建一張怪物卡。
+
+【構建規則 - ${rank} 級 ${rules.desc}】
+
+1. **六圍屬性分配**（肌肉、敏捷、細胞、智力、感知、精神）：
+   - 2 個主屬性，數值：${rules.attr.pri}
+   - 3 個副屬性，數值：${rules.attr.sec}
+   - 1 個通常屬性，數值：${rules.attr.norm}
+
+   *根據戰鬥類型「${type}」，建議主屬性為：${typeAttrs.primary.join('、')}*
+
+2. **技能等級分配**：
+   - 3 個主技能，等級：${rules.skill.pri}
+   - 4 個副技能，等級：${rules.skill.sec}
+   - 5 個次技能，等級：${rules.skill.norm}
+
+   *技能必須符合無限恐怖風格（如：近戰格鬥、槍械射擊、冥想、魔法專注、閃避、威嚇）*
+
+3. **戰鬥數值參考**（${rank}級普通標準）：
+   - 攻擊 DP：約 ${combat.atk}
+   - 傷害上限：約 ${combat.dmgCap}
+   - 防禦力：約 ${combat.def}
+   - 建議 HP：${combat.hp}
+
+4. **特殊能力設計**：
+   - 請設計 3-4 個符合 ${rank} 級的特性/主動技能
+   - 每個能力需包含：名稱、效果、冷卻或限制
+   ${diffKey === 'boss' || diffKey === 'elite' ? `
+   - ⚠️ 必須加入 BOSS 免疫模板：${immunity}` : ''}
+
+5. **獎勵**：基礎擊殺獎勵為 ${reward}
+
+【用戶需求】
+- 戰鬥類型：${type}
+- 風格描述：${desc}
+
+請輸出 JSON 格式：
+\`\`\`json
+{
+  "name": "怪物名稱",
+  "rank": "${rank}",
+  "description": "外觀與背景描述（2-3句）",
+  "attributes": {
+    "肌肉": 數值,
+    "敏捷": 數值,
+    "細胞": 數值,
+    "智力": 數值,
+    "感知": 數值,
+    "精神": 數值
+  },
+  "combatStats": {
+    "hp": 數值,
+    "attack_dp": 數值,
+    "damage_cap": 數值,
+    "defense": 數值,
+    "initiative": 數值
+  },
+  "skills": [
+    {"name": "技能名", "level": 數值, "type": "主/副/次"}
+  ],
+  "abilities": [
+    {"name": "能力名", "effect": "效果描述", "cooldown": "限制說明"}
+  ],
+  "immunities": "免疫列表（若為BOSS）",
+  "tactics": "ST 戰術建議",
+  "rewards": "${reward}"
 }
+\`\`\`
+
+請用繁體中文回答。`;
+
+        const result = await callGemini(prompt, { expectJson: true });
+
+        // 如果返回 _raw，顯示原始文字
+        if (result._raw) {
+            document.getElementById('npcOutput').textContent = result._raw;
+            document.getElementById('npcOutput').style.display = 'block';
+            hideLoading();
+            return;
+        }
+
+        // 格式化輸出結果
+        let html = `
+            <div style="border-bottom: 2px solid var(--accent-gold); padding-bottom: 15px; margin-bottom: 15px;">
+                <h3 style="color: var(--accent-gold); margin: 0;">
+                    ${escapeHtml(result.name || '未命名怪物')}
+                    <span class="power-level ${rank}" style="font-size: 0.7em; padding: 4px 12px;">${rank}級</span>
+                </h3>
+                <p style="color: var(--text-secondary); margin-top: 8px; font-size: 0.9rem;">
+                    ${escapeHtml(result.description || '')}
+                </p>
+            </div>
+        `;
+
+        // 戰鬥數據區塊
+        if (result.combatStats) {
+            const cs = result.combatStats;
+            html += `
+                <div style="background: var(--bg-elevated); padding: 15px; border-radius: var(--radius-sm); margin-bottom: 15px;">
+                    <h4 style="color: var(--accent-ember); margin-bottom: 10px;">⚔️ 戰鬥數據</h4>
+                    <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; text-align: center;">
+                        <div>
+                            <div style="color: var(--text-dim); font-size: 0.75rem;">HP</div>
+                            <div style="font-weight: bold; color: var(--danger); font-size: 1.1rem;">${cs.hp || '?'}</div>
+                        </div>
+                        <div>
+                            <div style="color: var(--text-dim); font-size: 0.75rem;">攻擊DP</div>
+                            <div style="font-weight: bold; color: var(--accent-gold);">${cs.attack_dp || '?'}</div>
+                        </div>
+                        <div>
+                            <div style="color: var(--text-dim); font-size: 0.75rem;">傷害上限</div>
+                            <div style="font-weight: bold; color: var(--accent-ember);">${cs.damage_cap || '?'}</div>
+                        </div>
+                        <div>
+                            <div style="color: var(--text-dim); font-size: 0.75rem;">防禦</div>
+                            <div style="font-weight: bold; color: var(--accent-cyan);">${cs.defense || '?'}</div>
+                        </div>
+                        <div>
+                            <div style="color: var(--text-dim); font-size: 0.75rem;">先攻</div>
+                            <div style="font-weight: bold; color: var(--text-primary);">${cs.initiative || '?'}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 六圍屬性
+        if (result.attributes) {
+            html += `
+                <div style="background: var(--bg-deep); padding: 12px; border-radius: var(--radius-sm); margin-bottom: 15px;">
+                    <h4 style="color: var(--accent-cyan); margin-bottom: 10px;">📊 六圍屬性</h4>
+                    <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; text-align: center;">
+            `;
+            for (const [key, val] of Object.entries(result.attributes)) {
+                const isPrimary = val >= rules.attr.pri;
+                const color = isPrimary ? 'var(--accent-gold)' : 'var(--text-secondary)';
+                html += `
+                    <div>
+                        <div style="color: var(--text-dim); font-size: 0.7rem;">${escapeHtml(key)}</div>
+                        <div style="font-weight: bold; color: ${color};">${val}</div>
+                    </div>
+                `;
+            }
+            html += `</div></div>`;
+        }
+
+        // 技能列表
+        if (result.skills && result.skills.length) {
+            html += `
+                <div style="margin-bottom: 15px;">
+                    <h4 style="color: var(--accent-purple); margin-bottom: 10px;">🎯 技能</h4>
+                    <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+            `;
+            result.skills.forEach(s => {
+                const typeColor = s.type === '主' ? 'var(--accent-gold)' :
+                                  s.type === '副' ? 'var(--accent-cyan)' : 'var(--text-dim)';
+                html += `
+                    <span style="background: var(--bg-elevated); padding: 4px 10px; border-radius: 15px; font-size: 0.85rem; border-left: 3px solid ${typeColor};">
+                        ${escapeHtml(s.name)} <span style="color: var(--text-dim);">Lv.${s.level}</span>
+                    </span>
+                `;
+            });
+            html += `</div></div>`;
+        }
+
+        // 特殊能力
+        if (result.abilities && result.abilities.length) {
+            html += `
+                <div style="margin-bottom: 15px;">
+                    <h4 style="color: var(--danger); margin-bottom: 10px;">🔥 特殊能力</h4>
+            `;
+            result.abilities.forEach(a => {
+                html += `
+                    <div style="background: var(--bg-elevated); padding: 12px; border-radius: var(--radius-sm); margin-bottom: 8px; border-left: 3px solid var(--danger);">
+                        <div style="font-weight: bold; color: var(--accent-ember);">${escapeHtml(a.name)}</div>
+                        <div style="font-size: 0.9rem; color: var(--text-secondary); margin-top: 4px;">${escapeHtml(a.effect)}</div>
+                        ${a.cooldown ? `<div style="font-size: 0.8rem; color: var(--text-dim); margin-top: 4px;">⏱️ ${escapeHtml(a.cooldown)}</div>` : ''}
+                    </div>
+                `;
+            });
+            html += `</div>`;
+        }
+
+        // 免疫（BOSS）
+        if (result.immunities) {
+            html += `
+                <div style="background: rgba(155, 89, 182, 0.1); padding: 12px; border-radius: var(--radius-sm); margin-bottom: 15px; border: 1px solid var(--accent-purple);">
+                    <h4 style="color: var(--accent-purple); margin-bottom: 8px;">🛡️ BOSS 免疫</h4>
+                    <div style="font-size: 0.9rem; color: var(--text-secondary);">${escapeHtml(result.immunities)}</div>
+                </div>
+            `;
+        }
+
+        // 戰術建議
+        if (result.tactics) {
+            html += `
+                <div style="background: var(--bg-deep); padding: 12px; border-radius: var(--radius-sm); margin-bottom: 15px;">
+                    <h4 style="color: var(--accent-gold); margin-bottom: 8px;">💡 ST 戰術建議</h4>
+                    <div style="font-size: 0.9rem; color: var(--text-secondary);">${escapeHtml(result.tactics)}</div>
+                </div>
+            `;
+        }
+
+        // 獎勵
+        html += `
+            <div style="text-align: center; padding: 10px; background: linear-gradient(135deg, var(--accent-gold), var(--accent-ember)); border-radius: var(--radius-sm); color: #000; font-weight: bold;">
+                🏆 擊殺獎勵：${escapeHtml(result.rewards || reward)}
+            </div>
+        `;
+
+        const output = document.getElementById('npcOutput');
+        output.innerHTML = html;
+        output.style.display = 'block';
+        hideLoading();
+
+    } catch(e) {
+        hideLoading();
+        console.error('NPC 生成錯誤:', e);
+        showError('npcError', '生成失敗: ' + e.message);
+    }
+};
 
 // ===== 設計檢查 =====
 function toggleCheck(li) {
