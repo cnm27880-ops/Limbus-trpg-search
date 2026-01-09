@@ -271,6 +271,31 @@
         .history-item { background: var(--bg-deep); padding: 15px; border-radius: var(--radius-sm); border-left: 3px solid var(--accent-cyan); margin-bottom: 10px; cursor: pointer; transition: transform 0.2s; }
         .history-item:hover { transform: translateX(5px); background: var(--bg-hover); }
 
+        .msg { padding: 12px 16px; border-radius: var(--radius-sm); margin: 10px 0; }
+        .msg.error { background: rgba(255,71,87,0.1); border: 1px solid var(--danger); color: var(--danger); }
+        .msg.success { background: rgba(46,213,115,0.1); border: 1px solid var(--success); color: var(--success); }
+
+        .char-card { background: var(--bg-elevated); padding: 20px; margin: 15px 0; border-radius: var(--radius); border-left: 4px solid var(--accent-gold); }
+        .power-badge { display: inline-block; padding: 4px 12px; border-radius: 6px; font-weight: 700; font-size: 0.9rem; margin-left: 10px; }
+        .power-S { background: linear-gradient(135deg, #FFD700, #FFA500); color: #000; }
+        .power-A { background: var(--danger); color: #fff; }
+        .power-B { background: var(--accent-purple); color: #fff; }
+        .power-C { background: var(--accent-blue); color: #fff; }
+        .power-D { background: var(--success); color: #fff; }
+        .core-abilities { margin: 10px 0; }
+        .core-abilities li { color: var(--text-secondary); margin: 5px 0; }
+        .warnings { background: rgba(255,71,87,0.1); border: 1px solid var(--danger); padding: 10px; border-radius: 8px; margin: 10px 0; }
+        .warnings li { color: var(--danger); margin: 5px 0; }
+        .weaknesses { background: rgba(52,152,219,0.05); border: 1px solid var(--accent-blue); padding: 10px; border-radius: 8px; margin: 10px 0; }
+        .weaknesses li { color: var(--accent-blue); margin: 5px 0; }
+        .suggestions { background: rgba(46,213,115,0.05); border: 1px solid var(--success); padding: 10px; border-radius: 8px; margin: 10px 0; }
+        .suggestions li { color: var(--success); margin: 5px 0; }
+        .rule-tag { display: inline-block; padding: 4px 10px; margin: 3px; background: var(--bg-deep); border: 1px solid var(--accent-gold); color: var(--accent-gold); border-radius: 12px; cursor: pointer; font-size: 0.85rem; transition: all 0.2s; }
+        .rule-tag:hover { background: var(--accent-gold); color: #000; }
+        .team-summary-section { background: var(--bg-elevated); padding: 15px; border-radius: var(--radius); margin: 20px 0; }
+        .synergies { color: var(--success); }
+        .gaps { color: var(--warning); }
+
         footer { text-align: center; padding: 30px; color: var(--text-dim); font-size: 0.8rem; border-top: 1px solid var(--border); margin-top: 40px; }
         footer a { color: var(--accent-gold); text-decoration: none; }
     </style>
@@ -379,8 +404,10 @@
             <div class="card gold">
                 <div class="card-title">
                     📊 分析結果
-                    <div style="margin-left:auto;">
-                        <button class="btn btn-secondary" onclick="exportResults('json')" style="font-size:0.8rem; padding:5px 10px;">💾 下載</button>
+                    <div style="margin-left:auto; display:flex; gap:8px;">
+                        <button class="btn btn-secondary" onclick="exportResults('discord')" style="font-size:0.8rem; padding:5px 10px;">📋 Discord</button>
+                        <button class="btn btn-secondary" onclick="exportResults('markdown')" style="font-size:0.8rem; padding:5px 10px;">📝 MD</button>
+                        <button class="btn btn-secondary" onclick="exportResults('json')" style="font-size:0.8rem; padding:5px 10px;">💾 JSON</button>
                     </div>
                 </div>
                 <div class="chart-container"><canvas id="radarChart"></canvas></div>
@@ -833,6 +860,48 @@ function getKey(type) {
     return k;
 }
 
+async function callGemini(prompt, options = {}) {
+    const key = getKey('gemini');
+
+    const response = await fetch(`${CONFIG.GEMINI_API}?key=${key}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+                temperature: options.temperature || 0.7,
+                maxOutputTokens: options.maxTokens || 4096
+            }
+        })
+    });
+
+    if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error?.message || 'API 呼叫失敗');
+    }
+
+    const data = await response.json();
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (!text) throw new Error('AI 無回應');
+
+    // 如果期望 JSON，嘗試解析
+    if (options.expectJson) {
+        const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/);
+        if (jsonMatch) {
+            return JSON.parse(jsonMatch[1]);
+        }
+        try {
+            return JSON.parse(text);
+        } catch {
+            // 如果解析失敗，回傳原始文字
+            return { _raw: text };
+        }
+    }
+
+    return text;
+}
+
 window.fetchSheets = async function() {
     try {
         const key = getKey('sheets');
@@ -878,36 +947,67 @@ window.fetchSheets = async function() {
     }
 };
 
+function extractNotes(data) {
+    const notes = {};
+    const rows = data?.sheets?.[0]?.data?.[0]?.rowData;
+    if (!rows) return notes;
+    rows.forEach((row, ri) => {
+        row.values?.forEach((cell, ci) => {
+            if (cell.note) notes[`${ri}-${ci}`] = cell.note;
+        });
+    });
+    return notes;
+}
+
 async function updatePreview(sheetId, key) {
     if(state.selectedSheets.size === 0) return;
     showLoading('下載資料...');
     let fullText = '';
-    
+    let totalNotes = 0;
+
     try {
         for(const title of state.selectedSheets) {
+            // 讀取儲存格值
             const res = await fetch(`${CONFIG.SHEETS_API}/${sheetId}/values/${encodeURIComponent(title)}?key=${key}`);
             const data = await res.json();
+
+            // 讀取備註
+            const notesRes = await fetch(`${CONFIG.SHEETS_API}/${sheetId}?ranges=${encodeURIComponent(title)}&fields=sheets(data(rowData(values(note,formattedValue))))&key=${key}`);
+            const notesData = await notesRes.json();
+            const notes = extractNotes(notesData);
+
             fullText += `\n===== 角色：${title} =====\n`;
             if(data.values) {
-                data.values.forEach(row => fullText += row.join(' | ') + '\n');
+                data.values.forEach((row, ri) => {
+                    const rowText = row.map((cell, ci) => {
+                        const noteKey = `${ri}-${ci}`;
+                        if (notes[noteKey]) {
+                            totalNotes++;
+                            return `${cell}【備註：${notes[noteKey]}】`;
+                        }
+                        return cell;
+                    }).join(' | ');
+                    fullText += rowText + '\n';
+                });
             }
         }
         state.charText = fullText;
         document.getElementById('previewBox').style.display = 'block';
         document.getElementById('previewContent').textContent = fullText.substring(0, 500) + '...';
-        document.getElementById('previewStats').textContent = `${fullText.length} 字`;
-    } catch(e) {}
+        document.getElementById('previewStats').textContent = `${fullText.length} 字 | ${totalNotes} 個備註`;
+    } catch(e) {
+        console.error('Preview error:', e);
+    }
     hideLoading();
 }
 
 window.analyzeCharacters = async function() {
     try {
-        const key = getKey('gemini');
         const text = document.getElementById('textInput').value || state.charText;
         if(!text) throw new Error('無資料');
-        
+
         showLoading('AI 分析中 (可能需要幾秒)...');
-        
+
         const keywords = extractKeywords(text);
         const relatedRules = searchRulesForAI(keywords);
         let ruleContext = "";
@@ -918,39 +1018,64 @@ window.analyzeCharacters = async function() {
         const prompt = `你是無限恐怖TRPG資深ST。分析以下角色資料：
         ${text.substring(0, 10000)}
         ${ruleContext}
-        
+
         請回傳 JSON 格式：
         {
           "characters": [
-            {"name": "名字", "powerLevel": "S/A/B/C/D", "summary": "定位簡評", "stats": {"offense":8, "defense":6, "mobility":5, "control":3, "sustain":4, "utility":2}}
+            {
+              "name": "角色名",
+              "powerLevel": "S/A/B/C/D",
+              "summary": "一句話定位",
+              "stats": {"offense":1-10, "defense":1-10, "mobility":1-10, "control":1-10, "sustain":1-10, "utility":1-10},
+              "coreAbilities": ["核心能力1", "核心能力2"],
+              "warnings": ["⚠️ ST警告：這個能力可能破壞平衡..."],
+              "weaknesses": ["弱點1", "弱點2"],
+              "suggestions": ["對策建議1", "對策建議2"],
+              "relatedRules": ["相關規則關鍵字1", "關鍵字2"]
+            }
           ],
-          "teamSummary": "隊伍總評"
-        }`;
+          "teamSummary": {
+            "overallPower": "整體戰力評估",
+            "composition": "隊伍組成分析",
+            "synergies": ["combo1", "combo2"],
+            "gaps": ["缺失1", "缺失2"]
+          }
+        }
 
-        const res = await fetch(`${CONFIG.GEMINI_API}?key=${key}`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-        });
-        
-        const data = await res.json();
-        const raw = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        const jsonMatch = raw.match(/```json\s*([\s\S]*?)\s*```/) || [null, raw];
-        const result = JSON.parse(jsonMatch[1] || raw);
+        評級標準：S=可秒殺BOSS級, A=高度優化, B=有明顯強項, C=均衡普通, D=新手或弱勢
+        請特別注意備註中的隱藏能力，這些往往是最危險的。`;
+
+        const result = await callGemini(prompt, { expectJson: true, temperature: 0.7 });
+        if (result._raw) {
+            throw new Error('AI 回應格式錯誤');
+        }
         
         state.lastAnalysis = result;
         saveHistory(result);
-        
+
         renderRadar(result.characters);
         let html = '';
         result.characters.forEach(c => {
-            html += `<div style="margin-bottom:15px; border-bottom:1px solid var(--border);">
-                <h3 style="color:var(--accent-gold);">${escapeHtml(c.name)} <span style="font-size:0.8rem; background:var(--accent-blood); color:white; padding:2px 6px; border-radius:4px;">${c.powerLevel}</span></h3>
-                <p style="color:var(--text-secondary);">${escapeHtml(c.summary)}</p>
-            </div>`;
+            html += renderCharacterCard(c);
         });
-        html += `<div style="background:var(--bg-elevated); padding:10px; border-radius:8px;"><strong>隊伍：</strong> ${escapeHtml(result.teamSummary)}</div>`;
-        
+
+        // 渲染隊伍總評
+        const ts = result.teamSummary;
+        if (ts) {
+            const summary = typeof ts === 'string' ? ts : ts.overallPower;
+            const composition = typeof ts === 'object' ? ts.composition : '';
+            const synergies = typeof ts === 'object' && ts.synergies ? ts.synergies : [];
+            const gaps = typeof ts === 'object' && ts.gaps ? ts.gaps : [];
+
+            html += `<div class="team-summary-section">
+                <h3 style="color:var(--accent-gold); margin-bottom:10px;">📋 隊伍總評</h3>
+                <p style="margin-bottom:10px;"><strong>整體戰力：</strong>${escapeHtml(summary)}</p>
+                ${composition ? `<p style="margin-bottom:10px;"><strong>組成分析：</strong>${escapeHtml(composition)}</p>` : ''}
+                ${synergies.length ? `<div class="synergies"><strong>✨ Combo：</strong><ul>${synergies.map(s => '<li>' + escapeHtml(s) + '</li>').join('')}</ul></div>` : ''}
+                ${gaps.length ? `<div class="gaps"><strong>⚠️ 缺失：</strong><ul>${gaps.map(g => '<li>' + escapeHtml(g) + '</li>').join('')}</ul></div>` : ''}
+            </div>`;
+        }
+
         document.getElementById('resultsContainer').innerHTML = html;
         document.getElementById('analyzeResults').style.display = 'block';
         hideLoading();
@@ -965,9 +1090,9 @@ window.analyzeCharacters = async function() {
 function renderRadar(chars) {
     const ctx = document.getElementById('radarChart').getContext('2d');
     if(state.radarChart) state.radarChart.destroy();
-    
+
     const colors = ['rgba(196,30,58,0.5)', 'rgba(212,160,32,0.5)', 'rgba(52,152,219,0.5)'];
-    
+
     state.radarChart = new Chart(ctx, {
         type: 'radar',
         data: {
@@ -987,6 +1112,61 @@ function renderRadar(chars) {
     });
 }
 
+function renderCharacterCard(char) {
+    const powerClass = `power-${char.powerLevel}`;
+    let html = `<div class="char-card">
+        <h3 style="color:var(--accent-gold); margin-bottom:8px;">
+            ${escapeHtml(char.name)}
+            <span class="power-badge ${powerClass}">${char.powerLevel}</span>
+        </h3>
+        <p style="color:var(--text-secondary); margin-bottom:15px;">${escapeHtml(char.summary)}</p>`;
+
+    // 核心能力
+    if (char.coreAbilities?.length) {
+        html += `<div class="core-abilities">
+            <strong style="color:var(--accent-gold);">🎯 核心能力：</strong>
+            <ul>${char.coreAbilities.map(a => '<li>' + escapeHtml(a) + '</li>').join('')}</ul>
+        </div>`;
+    }
+
+    // ST警告
+    if (char.warnings?.length) {
+        html += `<div class="warnings">
+            <strong>⚠️ ST警告：</strong>
+            <ul>${char.warnings.map(w => '<li>' + escapeHtml(w) + '</li>').join('')}</ul>
+        </div>`;
+    }
+
+    // 弱點
+    if (char.weaknesses?.length) {
+        html += `<div class="weaknesses">
+            <strong>🛡️ 弱點：</strong>
+            <ul>${char.weaknesses.map(w => '<li>' + escapeHtml(w) + '</li>').join('')}</ul>
+        </div>`;
+    }
+
+    // 對策建議
+    if (char.suggestions?.length) {
+        html += `<div class="suggestions">
+            <strong>💡 對策建議：</strong>
+            <ul>${char.suggestions.map(s => '<li>' + escapeHtml(s) + '</li>').join('')}</ul>
+        </div>`;
+    }
+
+    // 相關規則標籤
+    if (char.relatedRules?.length) {
+        html += `<div style="margin-top:10px;">
+            <strong style="color:var(--text-secondary); font-size:0.85rem;">📚 相關規則：</strong><br>`;
+        char.relatedRules.forEach(rule => {
+            html += `<span class="rule-tag" onclick="quickSearch('${escapeHtml(rule)}')">${escapeHtml(rule)}</span>`;
+        });
+        html += `</div>`;
+    }
+
+    html += `</div>`;
+    return html;
+}
+
 function extractKeywords(text) {
     const regex = /[\[【](.+?)[\]】]/g;
     const matches = [];
@@ -1000,44 +1180,129 @@ function searchRulesForAI(keywords) {
     return state.rulesData.filter(r => keywords.some(k => r.filename.includes(k))).slice(0, 3);
 }
 
+function smartSearchRules(query, maxResults = 5) {
+    // 分詞
+    const terms = query.toLowerCase().split(/\s+/).filter(t => t.length > 1);
+    if (!terms.length) return [];
+
+    // 計算每條規則的匹配分數
+    const scored = state.rulesData.map(rule => {
+        let score = 0;
+        terms.forEach(term => {
+            // 標題匹配權重高
+            if (rule.filename.toLowerCase().includes(term)) score += 3;
+            // 分類匹配
+            if (rule.category.toLowerCase().includes(term)) score += 2;
+            // 內容匹配
+            if (rule.searchText.includes(term)) score += 1;
+        });
+        return { ...rule, score };
+    });
+
+    // 排序並取前 N 筆
+    return scored
+        .filter(r => r.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, maxResults);
+}
+
 window.simulateBoss = async function() {
     try {
-        const key = getKey('gemini');
         showLoading('模擬中...');
         const hp = document.getElementById('bossHp').value;
+        const def = document.getElementById('bossDef').value;
+        const atk = document.getElementById('bossAtk').value;
+        const dmg = document.getElementById('bossDmg').value;
+        const init = document.getElementById('bossInit').value;
+        const resist = document.getElementById('bossResist').value;
         const ability = document.getElementById('bossAbilities').value;
-        
+
         let charContext = "";
         if(state.lastAnalysis) {
-            charContext = "面對玩家隊伍：\n" + state.lastAnalysis.characters.map(c => `${c.name}(${c.powerLevel})`).join(', ');
+            charContext = "\n\n面對玩家隊伍：\n" + state.lastAnalysis.characters.map(c =>
+                `${c.name}(${c.powerLevel}) - ${c.summary}`
+            ).join('\n');
         }
-        
-        const prompt = `分析 BOSS 戰：HP ${hp}, 能力: ${ability}。\n${charContext}\n請預測：\n1. 戰鬥預計回合數\n2. 玩家勝率\n3. 風險評估 (秒殺/苦戰)\n請用 JSON: {"rounds": "3-5", "winRate": "80%", "risk": "低", "analysis": "簡評"}`;
-        
-        const res = await fetch(`${CONFIG.GEMINI_API}?key=${key}`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-        });
-        
-        const data = await res.json();
-        const raw = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        const jsonMatch = raw.match(/```json\s*([\s\S]*?)\s*```/) || [null, raw];
-        const result = JSON.parse(jsonMatch[1] || raw);
-        
-        const html = `
+
+        const prompt = `作為無限恐怖 TRPG 資深 ST，分析以下 BOSS 戰鬥：
+
+BOSS 數值：
+- 生命值：${hp}
+- 防禦：${def}
+- 攻擊：${atk}
+- 傷害：${dmg}
+- 先攻：${init}
+- 抗性：${resist}
+- 特殊能力：${ability || '無'}
+
+${charContext}
+
+請用 JSON 格式回覆：
+{
+  "predictions": [
+    {"name": "角色名", "killRounds": "預估擊殺回合", "threat": "danger/warning/safe", "reason": "原因"}
+  ],
+  "overallRounds": "3-5",
+  "winRate": "80%",
+  "risk": "低/中/高",
+  "analysis": "整體分析",
+  "adjustments": {
+    "recommendedHp": 建議HP數值,
+    "recommendedDef": 建議防禦數值,
+    "suggestedMechanics": ["建議加入的機制1", "機制2"],
+    "warnings": ["需要注意的事項"]
+  }
+}
+
+threat 說明：danger=可能1-2回合秒殺, warning=3-5回合擊殺, safe=需要較長時間
+請用繁體中文。`;
+
+        const result = await callGemini(prompt, { expectJson: true });
+
+        // 顯示各角色預測
+        let html = '<h4 style="margin-bottom:15px;">📊 各角色威脅評估</h4>';
+        if (result.predictions?.length) {
+            result.predictions.forEach(p => {
+                const color = p.threat === 'danger' ? 'var(--danger)' :
+                             p.threat === 'warning' ? 'var(--warning)' : 'var(--success)';
+                html += `<div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border);">
+                    <span>${escapeHtml(p.name)}</span>
+                    <span style="color:${color};">${escapeHtml(p.killRounds)} 回合 (${p.threat})</span>
+                </div>`;
+            });
+        }
+
+        html += `<div style="margin-top:15px;">
             <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                <span style="font-size:1.2rem; font-weight:bold; color:var(--accent-gold);">${result.rounds} 回合</span>
+                <span style="font-size:1.2rem; font-weight:bold; color:var(--accent-gold);">預計 ${result.overallRounds} 回合</span>
                 <span style="color:var(--success);">勝率 ${result.winRate}</span>
             </div>
-            <p>${result.analysis}</p>
-        `;
+            <p style="color:var(--text-secondary);">${escapeHtml(result.analysis)}</p>
+        </div>`;
+
         document.getElementById('bossResultContent').innerHTML = html;
         document.getElementById('bossResult').style.display = 'block';
+
+        // 顯示調整建議
+        if (result.adjustments) {
+            const adj = result.adjustments;
+            let tipsHtml = `
+                <p><strong>建議 HP：</strong>${adj.recommendedHp}</p>
+                <p><strong>建議防禦：</strong>${adj.recommendedDef}</p>`;
+            if (adj.suggestedMechanics?.length) {
+                tipsHtml += `<p><strong>建議機制：</strong></p>
+                <ul style="margin-left:20px;">${adj.suggestedMechanics.map(m => '<li>' + escapeHtml(m) + '</li>').join('')}</ul>`;
+            }
+            if (adj.warnings?.length) {
+                tipsHtml += `<p style="color:var(--danger); margin-top:10px;"><strong>⚠️ 注意：</strong>${adj.warnings.join('、')}</p>`;
+            }
+            document.getElementById('bossTips').innerHTML = tipsHtml;
+        }
+
         hideLoading();
     } catch(e) {
         hideLoading();
-        alert('模擬失敗');
+        alert('模擬失敗: ' + e.message);
     }
 };
 
@@ -1045,26 +1310,33 @@ window.sendChat = async function() {
     const input = document.getElementById('chatInput');
     const msg = input.value.trim();
     if(!msg) return;
-    
+
     input.value = '';
     const container = document.getElementById('chatMessages');
     container.innerHTML += `<div class="chat-msg user"><div class="chat-bubble">${escapeHtml(msg)}</div></div>`;
-    
+
     try {
-        const key = getKey('gemini');
-        const rules = state.rulesData.filter(r => r.content.includes(msg) || r.filename.includes(msg)).slice(0, 2);
+        const rules = smartSearchRules(msg, 5);
         let context = "";
-        if(rules.length) context = "參考規則:\n" + rules.map(r => r.content.substring(0, 300)).join('\n');
-        
-        const res = await fetch(`${CONFIG.GEMINI_API}?key=${key}`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ contents: [{ parts: [{ text: "回答規則問題(繁體中文): " + msg + "\n" + context }] }] })
-        });
-        
-        const data = await res.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        
+        if(rules.length) {
+            context = "\n\n相關規則參考：\n" + rules.map(r =>
+                `【${r.filename}】\n${r.content.substring(0, 400)}`
+            ).join('\n\n');
+        }
+
+        const prompt = `你是無限恐怖 TRPG 規則專家。請根據以下規則資料回答問題。
+
+問題：${msg}
+${context}
+
+回答要求：
+- 使用繁體中文
+- 簡潔明瞭
+- 如果規則資料中有相關內容，請引用
+- 如果不確定，請明確說明`;
+
+        const text = await callGemini(prompt, { expectJson: false });
+
         container.innerHTML += `<div class="chat-msg ai"><div class="chat-bubble">${escapeHtml(text).replace(/\n/g, '<br>')}</div></div>`;
         container.scrollTop = container.scrollHeight;
     } catch(e) {
@@ -1074,22 +1346,15 @@ window.sendChat = async function() {
 
 window.generateNPC = async function() {
     try {
-        const key = getKey('gemini');
         showLoading('生成中...');
         const diff = document.getElementById('npcDiff').value;
         const type = document.getElementById('npcType').value;
         const desc = document.getElementById('npcDesc').value;
-        
+
         const prompt = `生成無限恐怖NPC: ${diff} ${type} ${desc}。\n請給出六圍屬性、HP、簡單技能列表。`;
-        
-        const res = await fetch(`${CONFIG.GEMINI_API}?key=${key}`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-        });
-        const data = await res.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        
+
+        const text = await callGemini(prompt, { expectJson: false });
+
         const output = document.getElementById('npcOutput');
         output.textContent = text;
         output.style.display = 'block';
@@ -1102,19 +1367,12 @@ window.generateNPC = async function() {
 
 window.getEncounterTips = async function() {
     try {
-        const key = getKey('gemini');
         const desc = document.getElementById('encounterDesc').value;
         if(!desc) return;
-        
+
         showLoading('思考中...');
-        const res = await fetch(`${CONFIG.GEMINI_API}?key=${key}`, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ contents: [{ parts: [{ text: "給出無限恐怖遭遇設計建議: " + desc }] }] })
-        });
-        const data = await res.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        
+        const text = await callGemini("給出無限恐怖遭遇設計建議: " + desc, { expectJson: false });
+
         const out = document.getElementById('encounterTips');
         out.innerHTML = escapeHtml(text).replace(/\n/g, '<br>');
         out.style.display = 'block';
@@ -1126,18 +1384,28 @@ function loadHistory() {
     const h = localStorage.getItem(CONFIG.STORAGE_PREFIX + 'history');
     if(h) state.history = JSON.parse(h);
     renderHistory();
+    updateTrackSelect();
 }
 
 function saveHistory(data) {
+    if (!data?.characters?.length) return;
+
     const item = {
         id: Date.now(),
-        date: new Date().toLocaleString(),
-        summary: data.teamSummary || '分析結果'
+        date: new Date().toLocaleString('zh-TW'),
+        characters: data.characters.map(c => ({
+            name: c.name,
+            level: c.powerLevel,
+            summary: c.summary
+        })),
+        fullData: data  // 保留完整數據
     };
+
     state.history.unshift(item);
     if(state.history.length > CONFIG.MAX_HISTORY) state.history.pop();
     localStorage.setItem(CONFIG.STORAGE_PREFIX + 'history', JSON.stringify(state.history));
     renderHistory();
+    updateTrackSelect();
 }
 
 function renderHistory() {
@@ -1146,19 +1414,142 @@ function renderHistory() {
         list.innerHTML = '<p style="text-align:center; padding:20px; color:var(--text-dim);">尚無紀錄</p>';
         return;
     }
+
     list.innerHTML = state.history.map(h => `
-        <div class="history-item">
-            <div style="font-weight:bold; color:var(--text-primary);">${h.date}</div>
-            <div style="font-size:0.9rem; color:var(--text-secondary);">${escapeHtml(h.summary)}</div>
+        <div class="history-item" onclick="loadHistoryItem(${h.id})">
+            <div class="history-header" style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                <span style="font-weight:bold; color:var(--text-primary);">${h.characters?.map(c => c.name + '(' + c.level + ')').join(', ') || '分析結果'}</span>
+                <span style="font-size:0.85rem; color:var(--text-dim);">${h.date}</span>
+            </div>
         </div>
     `).join('');
 }
+
+window.loadHistoryItem = function(id) {
+    const item = state.history.find(h => h.id === id);
+    if (item?.fullData) {
+        state.lastAnalysis = item.fullData;
+        // 重新渲染結果
+        renderRadar(item.fullData.characters);
+        let html = '';
+        item.fullData.characters.forEach(c => {
+            html += renderCharacterCard(c);
+        });
+
+        // 渲染隊伍總評
+        const ts = item.fullData.teamSummary;
+        if (ts) {
+            const summary = typeof ts === 'string' ? ts : ts.overallPower;
+            const composition = typeof ts === 'object' ? ts.composition : '';
+            const synergies = typeof ts === 'object' && ts.synergies ? ts.synergies : [];
+            const gaps = typeof ts === 'object' && ts.gaps ? ts.gaps : [];
+
+            html += `<div class="team-summary-section">
+                <h3 style="color:var(--accent-gold); margin-bottom:10px;">📋 隊伍總評</h3>
+                <p style="margin-bottom:10px;"><strong>整體戰力：</strong>${escapeHtml(summary)}</p>
+                ${composition ? `<p style="margin-bottom:10px;"><strong>組成分析：</strong>${escapeHtml(composition)}</p>` : ''}
+                ${synergies.length ? `<div class="synergies"><strong>✨ Combo：</strong><ul>${synergies.map(s => '<li>' + escapeHtml(s) + '</li>').join('')}</ul></div>` : ''}
+                ${gaps.length ? `<div class="gaps"><strong>⚠️ 缺失：</strong><ul>${gaps.map(g => '<li>' + escapeHtml(g) + '</li>').join('')}</ul></div>` : ''}
+            </div>`;
+        }
+
+        document.getElementById('resultsContainer').innerHTML = html;
+        document.getElementById('analyzeResults').style.display = 'block';
+        switchPage('analyze');
+    }
+};
+
+function updateTrackSelect() {
+    const select = document.getElementById('trackSelect');
+    const charMap = {};
+
+    // 收集所有角色名稱和出現次數
+    state.history.forEach(h => {
+        h.characters?.forEach(c => {
+            if (!charMap[c.name]) charMap[c.name] = 0;
+            charMap[c.name]++;
+        });
+    });
+
+    // 只顯示出現超過1次的角色
+    const repeatChars = Object.entries(charMap).filter(([_, count]) => count > 1);
+
+    if (repeatChars.length === 0) {
+        select.innerHTML = '<option value="">-- 無可追蹤角色 --</option>';
+        return;
+    }
+
+    select.innerHTML = '<option value="">-- 選擇角色 --</option>' +
+        repeatChars.map(([name, count]) =>
+            `<option value="${escapeHtml(name)}">${escapeHtml(name)} (${count}次)</option>`
+        ).join('');
+
+    select.onchange = () => showCharacterTrack(select.value);
+}
+
+window.showCharacterTrack = function(name) {
+    if (!name) {
+        document.getElementById('trackResult').innerHTML = '';
+        return;
+    }
+
+    // 找出該角色的所有歷史記錄
+    const records = [];
+    state.history.forEach(h => {
+        const char = h.fullData?.characters?.find(c => c.name === name);
+        if (char) {
+            records.push({
+                date: h.date,
+                level: char.powerLevel,
+                stats: char.stats,
+                summary: char.summary
+            });
+        }
+    });
+
+    if (records.length < 2) {
+        document.getElementById('trackResult').innerHTML = '<p style="color:var(--text-dim);">需要至少2次分析才能追蹤</p>';
+        return;
+    }
+
+    // 比較最新和最舊
+    const latest = records[0];
+    const oldest = records[records.length - 1];
+
+    let html = `<h4 style="color:var(--accent-gold); margin-bottom:10px;">${escapeHtml(name)} 成長追蹤</h4>`;
+    html += `<p>評級變化：<strong>${oldest.level}</strong> → <strong style="color:var(--accent-ember);">${latest.level}</strong></p>`;
+
+    // 六維變化
+    if (latest.stats && oldest.stats) {
+        html += '<div style="margin-top:10px;">';
+        ['offense', 'defense', 'mobility', 'control', 'sustain', 'utility'].forEach(stat => {
+            const diff = (latest.stats[stat] || 0) - (oldest.stats[stat] || 0);
+            const color = diff > 0 ? 'var(--success)' : diff < 0 ? 'var(--danger)' : 'var(--text-dim)';
+            const sign = diff > 0 ? '+' : '';
+            html += `<span style="margin-right:10px;">${stat}: <span style="color:${color};">${sign}${diff}</span></span>`;
+        });
+        html += '</div>';
+    }
+
+    // 歷史列表
+    html += '<div style="margin-top:15px; max-height:200px; overflow-y:auto;">';
+    records.forEach(r => {
+        html += `<div style="padding:8px; border-bottom:1px solid var(--border); font-size:0.85rem;">
+            <span style="color:var(--text-dim);">${r.date}</span> -
+            <span style="color:var(--accent-gold);">${r.level}</span>
+        </div>`;
+    });
+    html += '</div>';
+
+    document.getElementById('trackResult').innerHTML = html;
+};
 
 window.clearHistory = function() {
     if(confirm('確定清除？')) {
         state.history = [];
         localStorage.removeItem(CONFIG.STORAGE_PREFIX + 'history');
         renderHistory();
+        updateTrackSelect();
     }
 };
 
@@ -1195,6 +1586,53 @@ function getSnippet(text, terms, maxLen) {
     if (end < text.length) snippet += '...';
     return snippet;
 }
+
+window.exportResults = function(format) {
+    if (!state.lastAnalysis) return;
+    const data = state.lastAnalysis;
+
+    if (format === 'discord') {
+        let text = '**📊 角卡戰力分析**\n\n';
+        data.characters.forEach(c => {
+            text += `**${c.name}** [${c.powerLevel}]\n`;
+            text += `> ${c.summary}\n`;
+            if (c.warnings?.length) {
+                text += `⚠️ ${c.warnings.join('\n⚠️ ')}\n`;
+            }
+            text += '\n';
+        });
+        const ts = data.teamSummary;
+        if (ts) {
+            const summary = typeof ts === 'string' ? ts : ts.overallPower;
+            text += `**隊伍總評：** ${summary}\n`;
+        }
+        navigator.clipboard.writeText(text).then(() => alert('已複製到剪貼簿！'));
+
+    } else if (format === 'markdown') {
+        let text = '# 角卡戰力分析\n\n';
+        data.characters.forEach(c => {
+            text += `## ${c.name} [${c.powerLevel}]\n\n`;
+            text += `${c.summary}\n\n`;
+            if (c.coreAbilities?.length) {
+                text += `### 核心能力\n${c.coreAbilities.map(a => '- ' + a).join('\n')}\n\n`;
+            }
+            if (c.warnings?.length) {
+                text += `### ⚠️ 警告\n${c.warnings.map(w => '- ' + w).join('\n')}\n\n`;
+            }
+        });
+        navigator.clipboard.writeText(text).then(() => alert('已複製 Markdown！'));
+
+    } else {
+        // JSON 下載
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'analysis_' + new Date().toISOString().slice(0,10) + '.json';
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+};
 
 window.toggleExpand = function(id) {
     const el = document.getElementById('content-' + id);
