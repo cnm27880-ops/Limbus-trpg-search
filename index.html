@@ -4,1616 +4,1245 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     
-    <!-- ===== 安全標頭 (透過 meta tag 實現) ===== -->
-    <!-- Content Security Policy: 限制資源載入來源 -->
+    <!-- 安全標頭 -->
     <meta http-equiv="Content-Security-Policy" content="
         default-src 'self';
-        script-src 'self' 'unsafe-inline';
-        style-src 'self' 'unsafe-inline';
-        img-src 'self' data:;
-        connect-src 'self' https://raw.githubusercontent.com;
+        script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net;
+        style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+        font-src https://fonts.gstatic.com;
+        img-src 'self' data: https:;
+        connect-src 'self' https://sheets.googleapis.com https://generativelanguage.googleapis.com https://raw.githubusercontent.com;
         frame-ancestors 'none';
         form-action 'self';
         base-uri 'self';
     ">
-    <!-- 防止 MIME 類型嗅探攻擊 -->
-    <meta http-equiv="X-Content-Type-Options" content="nosniff">
-    <!-- 防止被嵌入 iframe (點擊劫持) -->
-    <meta http-equiv="X-Frame-Options" content="DENY">
-    <!-- 強制 HTTPS -->
-    <meta http-equiv="Strict-Transport-Security" content="max-age=31536000; includeSubDomains">
-    <!-- XSS 過濾器 -->
-    <meta http-equiv="X-XSS-Protection" content="1; mode=block">
-    <!-- Referrer 政策 -->
-    <meta name="referrer" content="strict-origin-when-cross-origin">
     
-    <title>無限恐怖 TRPG 規則書搜尋器</title>
+    <title>無限恐怖 TRPG 綜合系統</title>
+    
+    <!-- 引入資源 -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     
     <style>
+        /* ===== File 2 的核心設計風格 ===== */
         :root {
-            /* Limbus Company 風格配色 - 護眼版 */
-            --bg-base: #121214;
-            --bg-elevated: #1a1a1e;
-            --bg-card: #222228;
-            --bg-hover: #2a2a32;
-            --accent-orange: #e07030;
-            --accent-orange-dim: #a05020;
-            --accent-red: #c02030;
-            --accent-red-dim: #801520;
+            --bg-abyss: #0a0a0c;
+            --bg-deep: #12121a;
+            --bg-card: #1a1a24;
+            --bg-elevated: #222230;
+            --bg-hover: #2a2a3a;
+            --accent-blood: #c41e3a;
+            --accent-blood-dim: #8b1528;
             --accent-gold: #d4a020;
-            --text-primary: #e8e8ec;
-            --text-secondary: #a0a0a8;
-            --text-dim: #606068;
-            --border: #353540;
-            --border-light: #454550;
-            --highlight: #ffd060;
-            --success: #40a060;
-            --error: #e04040;
-            --radius: 12px;
-            --radius-sm: 8px;
+            --accent-ember: #ff6b35;
+            --accent-purple: #9b59b6;
+            --accent-blue: #3498db;
+            --accent-cyan: #00d4aa;
+            --text-primary: #e8e8f0;
+            --text-secondary: #a0a0b0;
+            --text-dim: #606070;
+            --border: #333340;
+            --danger: #ff4757;
+            --warning: #ffa502;
+            --success: #2ed573;
+            --info: #70a1ff;
+            --radius: 16px;
+            --radius-sm: 10px;
         }
         
         * { box-sizing: border-box; margin: 0; padding: 0; }
         
         body {
-            font-family: "Microsoft JhengHei", "Noto Sans TC", -apple-system, sans-serif;
-            background: var(--bg-base);
+            font-family: 'Noto Sans TC', -apple-system, sans-serif;
+            background: var(--bg-abyss);
             color: var(--text-primary);
             min-height: 100vh;
-            line-height: 1.6;
+            line-height: 1.7;
         }
         
-        /* 滾動條 */
-        ::-webkit-scrollbar { width: 10px; height: 10px; }
-        ::-webkit-scrollbar-track { background: var(--bg-base); }
-        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 5px; }
-        ::-webkit-scrollbar-thumb:hover { background: var(--accent-orange-dim); }
-        
-        /* ===== 頂部標題 ===== */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-abyss); }
+        ::-webkit-scrollbar-thumb { background: var(--accent-blood-dim); border-radius: 4px; }
+
+        /* Header */
         header {
-            background: linear-gradient(135deg, var(--accent-red-dim) 0%, #1a1015 50%, var(--bg-elevated) 100%);
-            padding: 25px 20px;
+            background: linear-gradient(135deg, var(--accent-blood-dim) 0%, var(--bg-deep) 40%, var(--bg-abyss) 100%);
+            padding: 30px 20px;
             text-align: center;
-            border-bottom: 2px solid var(--accent-red);
+            border-bottom: 3px solid var(--accent-blood);
             position: relative;
-            overflow: hidden;
         }
-        
-        header::before {
+        header::after {
             content: '';
             position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: repeating-linear-gradient(
-                90deg,
-                transparent 0px, transparent 100px,
-                rgba(192, 32, 48, 0.03) 100px, rgba(192, 32, 48, 0.03) 101px
-            );
-            pointer-events: none;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent-gold), transparent);
+            animation: scan 3s linear infinite;
         }
-        
-        .header-content {
-            position: relative;
-            z-index: 1;
+        @keyframes scan {
+            0% { transform: translateY(0); opacity: 0; }
+            50% { opacity: 1; }
+            100% { transform: translateY(100px); opacity: 0; }
         }
-        
         h1 {
-            font-size: 1.8rem;
-            font-weight: 700;
+            font-family: 'Orbitron', sans-serif;
+            font-size: clamp(1.3rem, 4vw, 1.8rem);
+            font-weight: 900;
             letter-spacing: 3px;
-            color: var(--text-primary);
-            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 15px;
+            text-shadow: 0 0 20px rgba(196, 30, 58, 0.5);
         }
-        
-        /* 深紅色巴士圖標 (SVG) */
-        .bus-icon {
-            width: 48px;
-            height: 48px;
-            filter: drop-shadow(0 0 8px rgba(192, 32, 48, 0.6));
+        h1 .highlight { color: var(--accent-gold); }
+        .subtitle { font-size: 0.85rem; color: var(--text-secondary); margin-top: 8px; }
+        .version { display: inline-block; padding: 2px 8px; background: var(--accent-gold); color: #000; font-size: 0.7rem; font-weight: 700; border-radius: 8px; margin-left: 8px; }
+
+        /* Navigation (頂部導航) */
+        .main-nav {
+            background: var(--bg-deep);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            overflow-x: auto; /* 手機版可橫向滑動 */
+            white-space: nowrap;
         }
-        
-        .subtitle {
-            font-size: 0.9rem;
-            color: var(--text-secondary);
-            margin-top: 8px;
-            letter-spacing: 1px;
-        }
-        
-        /* ===== 主容器 ===== */
-        .container {
-            max-width: 1100px;
+        .nav-container {
+            max-width: 1400px;
             margin: 0 auto;
-            padding: 25px 20px;
-        }
-        
-        /* ===== 載入狀態區 ===== */
-        .load-status-bar {
-            background: var(--bg-card);
-            border-radius: var(--radius);
-            padding: 18px 25px;
-            margin-bottom: 20px;
-            border: 1px solid var(--border);
             display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 15px;
-            flex-wrap: wrap;
-        }
-        
-        .status-left {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        
-        .status-indicator {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: var(--text-dim);
-            animation: pulse 1.5s infinite;
-        }
-        
-        .status-indicator.loading { background: var(--accent-orange); }
-        .status-indicator.success { background: var(--success); animation: none; }
-        .status-indicator.error { background: var(--error); animation: none; }
-        
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.4; }
-        }
-        
-        .status-text {
-            font-size: 0.95rem;
-            color: var(--text-secondary);
-        }
-        
-        .status-text.success { color: var(--success); }
-        .status-text.error { color: var(--error); }
-        
-        .retry-btn {
-            padding: 8px 18px;
-            background: var(--accent-orange-dim);
-            border: none;
-            border-radius: var(--radius-sm);
-            color: white;
-            font-size: 0.85rem;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: none;
-        }
-        
-        .retry-btn:hover { background: var(--accent-orange); }
-        .retry-btn.show { display: inline-block; }
-        
-        /* 手動載入備用 */
-        .fallback-upload {
-            margin-top: 15px;
-            padding-top: 15px;
-            border-top: 1px dashed var(--border);
-            display: none;
-        }
-        
-        .fallback-upload.show { display: block; }
-        
-        .fallback-hint {
-            font-size: 0.85rem;
-            color: var(--text-dim);
-            margin-bottom: 10px;
-        }
-        
-        .file-input-wrapper {
-            position: relative;
-            display: inline-block;
-        }
-        
-        .file-input-wrapper input[type="file"] {
-            position: absolute;
-            left: 0; top: 0;
-            opacity: 0;
-            width: 100%; height: 100%;
-            cursor: pointer;
-        }
-        
-        .file-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 20px;
-            background: var(--bg-hover);
-            border: 1px solid var(--border);
-            color: var(--text-secondary);
-            border-radius: var(--radius-sm);
-            font-size: 0.9rem;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        
-        .file-btn:hover {
-            background: var(--accent-orange-dim);
-            border-color: var(--accent-orange-dim);
-            color: white;
-        }
-        
-        /* ===== 搜尋區 ===== */
-        .search-section {
-            background: var(--bg-card);
-            border-radius: var(--radius);
-            padding: 25px;
-            margin-bottom: 25px;
-            border: 1px solid var(--border);
-            opacity: 0.5;
-            pointer-events: none;
-            transition: all 0.3s;
-        }
-        
-        .search-section.enabled {
-            opacity: 1;
-            pointer-events: auto;
-        }
-        
-        .search-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-        
-        .search-title {
-            font-size: 1.1rem;
-            color: var(--accent-orange);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .bookmark-btn {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 18px;
-            background: var(--bg-elevated);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-sm);
-            color: var(--accent-gold);
-            font-size: 0.9rem;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        
-        .bookmark-btn:hover {
-            background: var(--bg-hover);
-            border-color: var(--accent-gold);
-        }
-        
-        .bookmark-btn .count {
-            background: var(--accent-gold);
-            color: var(--bg-base);
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-size: 0.8rem;
-            font-weight: 600;
-        }
-        
-        .search-box {
-            display: flex;
-            gap: 12px;
-            margin-bottom: 15px;
-        }
-        
-        .search-input {
-            flex: 1;
-            padding: 16px 20px;
-            font-size: 1.05rem;
-            border: 2px solid var(--border);
-            border-radius: var(--radius-sm);
-            background: var(--bg-elevated);
-            color: var(--text-primary);
-            outline: none;
-            transition: all 0.3s ease;
-        }
-        
-        .search-input:focus {
-            border-color: var(--accent-orange);
-            box-shadow: 0 0 0 3px rgba(224, 112, 48, 0.15);
-        }
-        
-        .search-input::placeholder { color: var(--text-dim); }
-        
-        .search-btn {
-            padding: 16px 28px;
-            background: linear-gradient(135deg, var(--accent-orange) 0%, var(--accent-orange-dim) 100%);
-            color: white;
-            border: none;
-            border-radius: var(--radius-sm);
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .search-btn:hover {
-            filter: brightness(1.15);
-            transform: translateY(-2px);
-        }
-        
-        .search-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none;
-        }
-        
-        .search-tips {
-            font-size: 0.85rem;
-            color: var(--text-dim);
-            padding: 12px 15px;
-            background: var(--bg-elevated);
-            border-radius: var(--radius-sm);
-            border-left: 3px solid var(--accent-orange-dim);
-        }
-        
-        .search-tips code {
-            background: var(--bg-hover);
-            color: var(--accent-gold);
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-family: monospace;
-        }
-        
-        /* 快捷標籤 */
-        .quick-tags {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-top: 18px;
-            padding-top: 18px;
-            border-top: 1px solid var(--border);
-        }
-        
-        .quick-tags-label {
-            color: var(--text-dim);
-            font-size: 0.85rem;
-            margin-right: 5px;
-            display: flex;
-            align-items: center;
-        }
-        
-        .quick-tag {
-            padding: 7px 14px;
-            background: var(--bg-elevated);
-            border: 1px solid var(--border);
-            border-radius: 20px;
-            color: var(--text-secondary);
-            font-size: 0.85rem;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-        
-        .quick-tag:hover {
-            background: var(--accent-orange-dim);
-            border-color: var(--accent-orange);
-            color: white;
-            transform: translateY(-2px);
-        }
-        
-        /* ===== 結果區 ===== */
-        .results-container { min-height: 200px; }
-        
-        .results-stats {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 18px 20px;
-            background: var(--bg-card);
-            border-radius: var(--radius);
-            margin-bottom: 20px;
-            border: 1px solid var(--border);
-        }
-        
-        .stats-count {
-            font-size: 1.05rem;
-            color: var(--text-secondary);
-        }
-        
-        .stats-count strong {
-            color: var(--accent-gold);
-            font-size: 1.3rem;
-            margin: 0 3px;
-        }
-        
-        .stats-time {
-            color: var(--text-dim);
-            font-size: 0.85rem;
-        }
-        
-        .results-list {
-            display: flex;
-            flex-direction: column;
-            gap: 18px;
-        }
-        
-        .result-card {
-            background: var(--bg-card);
-            border-radius: var(--radius);
-            padding: 22px;
-            border: 1px solid var(--border);
-            border-left: 4px solid var(--accent-orange-dim);
-            transition: all 0.2s ease;
-            position: relative;
-        }
-        
-        .result-card:hover {
-            border-left-color: var(--accent-orange);
-            background: var(--bg-hover);
-            transform: translateX(4px);
-        }
-        
-        .result-card.bookmarked { border-left-color: var(--accent-gold); }
-        
-        .result-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 15px;
-            gap: 15px;
-        }
-        
-        .result-title-area { flex: 1; }
-        
-        .result-title {
-            font-size: 1.15rem;
-            font-weight: 600;
-            color: var(--accent-orange);
-            margin-bottom: 5px;
-            line-height: 1.4;
-        }
-        
-        .result-category {
-            display: inline-flex;
-            align-items: center;
             gap: 5px;
-            background: var(--bg-elevated);
-            padding: 4px 12px;
-            border-radius: 15px;
-            font-size: 0.8rem;
-            color: var(--text-dim);
-            border: 1px solid var(--border);
+            padding: 10px 15px;
         }
-        
-        .result-actions { display: flex; gap: 8px; }
-        
-        .star-btn {
-            width: 38px;
-            height: 38px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: var(--bg-elevated);
-            border: 1px solid var(--border);
+        .nav-btn {
+            padding: 10px 16px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border: none;
             border-radius: var(--radius-sm);
-            color: var(--text-dim);
-            font-size: 1.2rem;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-        
-        .star-btn:hover {
-            background: var(--bg-hover);
-            border-color: var(--accent-gold);
-            color: var(--accent-gold);
-        }
-        
-        .star-btn.active {
-            background: rgba(212, 160, 32, 0.15);
-            border-color: var(--accent-gold);
-            color: var(--accent-gold);
-        }
-        
-        .result-content {
-            font-size: 0.95rem;
-            line-height: 1.85;
+            background: transparent;
             color: var(--text-secondary);
-            max-height: 180px;
-            overflow: hidden;
-            position: relative;
-            padding: 15px;
-            background: var(--bg-elevated);
-            border-radius: var(--radius-sm);
-            border: 1px solid var(--border);
-        }
-        
-        .result-content.expanded { max-height: none; }
-        
-        .result-content::after {
-            content: '';
-            position: absolute;
-            bottom: 0; left: 0; right: 0;
-            height: 60px;
-            background: linear-gradient(transparent, var(--bg-elevated));
-            pointer-events: none;
-            border-radius: 0 0 var(--radius-sm) var(--radius-sm);
-        }
-        
-        .result-content.expanded::after { display: none; }
-        
-        .result-content mark {
-            background: linear-gradient(135deg, var(--highlight) 0%, #e0a020 100%);
-            color: var(--bg-base);
-            padding: 1px 5px;
-            border-radius: 4px;
-            font-weight: 500;
-        }
-        
-        .result-footer {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 15px;
-            padding-top: 12px;
-            border-top: 1px solid var(--border);
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-        
-        .expand-btn, .link-btn {
-            padding: 10px 18px;
-            border: 1px solid var(--border);
-            border-radius: var(--radius-sm);
             cursor: pointer;
-            font-size: 0.88rem;
-            transition: all 0.2s ease;
-            display: inline-flex;
+            transition: all 0.3s;
+            display: flex;
             align-items: center;
             gap: 6px;
         }
-        
-        .expand-btn {
-            background: var(--bg-elevated);
-            color: var(--text-secondary);
-        }
-        
-        .expand-btn:hover {
-            background: var(--bg-hover);
-            border-color: var(--accent-orange-dim);
-            color: var(--text-primary);
-        }
-        
-        .link-btn {
-            background: var(--accent-orange-dim);
-            border-color: var(--accent-orange-dim);
-            color: white;
-            text-decoration: none;
-        }
-        
-        .link-btn:hover {
-            background: var(--accent-orange);
-            border-color: var(--accent-orange);
-        }
-        
-        /* ===== 分頁 ===== */
-        .pagination {
-            display: flex;
-            justify-content: center;
-            gap: 8px;
-            margin-top: 25px;
-            flex-wrap: wrap;
-        }
-        
-        .page-btn {
-            min-width: 42px;
-            height: 42px;
-            padding: 0 12px;
+        .nav-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+        .nav-btn.active { background: var(--accent-blood-dim); color: var(--accent-gold); }
+
+        /* Layout */
+        .container { max-width: 1300px; margin: 0 auto; padding: 20px 15px; }
+        .page { display: none; animation: fadeIn 0.3s ease; }
+        .page.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Common Components (Cards, Buttons, Inputs) */
+        .card {
             background: var(--bg-card);
+            border-radius: var(--radius);
             border: 1px solid var(--border);
-            color: var(--text-secondary);
-            border-radius: var(--radius-sm);
-            cursor: pointer;
-            transition: all 0.2s ease;
-            font-size: 0.9rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            padding: 22px;
+            margin-bottom: 22px;
+            position: relative;
         }
-        
-        .page-btn:hover:not(:disabled) {
-            background: var(--bg-hover);
-            border-color: var(--accent-orange-dim);
-            color: var(--text-primary);
-        }
-        
-        .page-btn.active {
-            background: var(--accent-orange);
-            border-color: var(--accent-orange);
-            color: white;
-            font-weight: 600;
-        }
-        
-        .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-        
-        /* ===== 無結果 ===== */
-        .no-results {
-            text-align: center;
-            padding: 60px 20px;
-            color: var(--text-dim);
-        }
-        
-        .no-results-icon {
-            font-size: 4rem;
-            margin-bottom: 15px;
-            opacity: 0.5;
-        }
-        
-        .no-results h3 {
-            color: var(--text-secondary);
-            margin-bottom: 10px;
-        }
-        
-        /* ===== 書籤面板 ===== */
-        .bookmark-panel {
-            position: fixed;
-            top: 0; right: -450px;
-            width: 420px;
-            max-width: 90vw;
-            height: 100vh;
-            background: var(--bg-elevated);
-            border-left: 2px solid var(--accent-gold);
-            z-index: 1000;
-            transition: right 0.35s ease;
-            display: flex;
-            flex-direction: column;
-            box-shadow: -5px 0 30px rgba(0,0,0,0.5);
-        }
-        
-        .bookmark-panel.open { right: 0; }
-        
-        .bookmark-panel-header {
-            padding: 20px;
-            background: var(--bg-card);
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .bookmark-panel-title {
-            font-size: 1.2rem;
-            color: var(--accent-gold);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .close-panel-btn {
-            width: 36px;
-            height: 36px;
-            background: var(--bg-elevated);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-sm);
-            color: var(--text-dim);
-            font-size: 1.2rem;
-            cursor: pointer;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .close-panel-btn:hover {
-            background: var(--accent-red-dim);
-            border-color: var(--accent-red);
-            color: white;
-        }
-        
-        .bookmark-panel-content {
-            flex: 1;
-            overflow-y: auto;
-            padding: 15px;
-        }
-        
-        .bookmark-item {
-            background: var(--bg-card);
-            border-radius: var(--radius-sm);
-            padding: 15px;
-            margin-bottom: 12px;
-            border: 1px solid var(--border);
-            border-left: 3px solid var(--accent-gold);
-        }
-        
-        .bookmark-item-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 10px;
-        }
-        
-        .bookmark-item-title {
-            font-weight: 600;
-            color: var(--accent-orange);
-            font-size: 0.95rem;
-            flex: 1;
-        }
-        
-        .remove-bookmark-btn {
-            background: none;
-            border: none;
-            color: var(--text-dim);
-            cursor: pointer;
-            padding: 5px;
-            font-size: 1rem;
-            transition: color 0.2s;
-        }
-        
-        .remove-bookmark-btn:hover { color: var(--accent-red); }
-        
-        .bookmark-item-preview {
-            font-size: 0.85rem;
-            color: var(--text-dim);
-            line-height: 1.6;
-            max-height: 60px;
-            overflow: hidden;
-        }
-        
-        .bookmark-item-link {
-            display: inline-block;
-            margin-top: 10px;
-            font-size: 0.8rem;
-            color: var(--accent-orange-dim);
-            text-decoration: none;
-        }
-        
-        .bookmark-item-link:hover {
-            color: var(--accent-orange);
-            text-decoration: underline;
-        }
-        
-        .bookmark-empty {
-            text-align: center;
-            padding: 40px 20px;
-            color: var(--text-dim);
-        }
-        
-        /* 遮罩 */
-        .overlay {
-            position: fixed;
+        .card::before {
+            content: '';
+            position: absolute;
             top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: rgba(0,0,0,0.6);
-            z-index: 999;
-            opacity: 0;
-            visibility: hidden;
+            width: 100%; height: 3px;
+            background: linear-gradient(90deg, var(--accent-blood), var(--accent-gold));
+        }
+        .card.gold::before { background: linear-gradient(90deg, var(--accent-gold), var(--accent-ember)); }
+        .card.purple::before { background: linear-gradient(90deg, var(--accent-purple), var(--accent-blue)); }
+        .card.cyan::before { background: linear-gradient(90deg, var(--accent-cyan), var(--accent-blue)); }
+        
+        .card-title {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: var(--accent-gold);
+            margin-bottom: 18px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn {
+            padding: 12px 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            border: none;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
             transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
         }
-        
-        .overlay.show { opacity: 1; visibility: visible; }
-        
-        /* ===== 頁尾 ===== */
-        footer {
-            text-align: center;
-            padding: 20px;
-            color: var(--text-dim);
-            font-size: 0.8rem;
-            border-top: 1px solid var(--border);
-            margin-top: 40px;
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-primary { background: linear-gradient(135deg, var(--accent-blood), var(--accent-blood-dim)); color: #fff; }
+        .btn-gold { background: linear-gradient(135deg, var(--accent-gold), var(--accent-ember)); color: #000; }
+        .btn-secondary { background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text-secondary); }
+        .btn-secondary:hover { background: var(--bg-hover); border-color: var(--accent-gold); color: var(--text-primary); }
+
+        .input-group label { display: block; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 6px; }
+        input, select, textarea, .text-area {
+            width: 100%;
+            padding: 12px 15px;
+            font-size: 0.95rem;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: var(--bg-deep);
+            color: var(--text-primary);
+            outline: none;
+            transition: border-color 0.3s;
+            font-family: inherit;
         }
-        
-        footer a {
-            color: var(--accent-orange-dim);
-            text-decoration: none;
+        input:focus, textarea:focus { border-color: var(--accent-gold); }
+
+        /* ===== 搜尋器特定樣式 (整合進來) ===== */
+        .search-box-large {
+            display: flex; gap: 10px; margin-bottom: 20px;
         }
-        
-        footer a:hover { text-decoration: underline; }
-        
-        /* ===== RWD ===== */
-        @media (max-width: 768px) {
-            h1 { font-size: 1.4rem; letter-spacing: 1px; }
-            .bus-icon { width: 36px; height: 36px; }
-            .container { padding: 15px; }
-            .search-box { flex-direction: column; }
-            .search-btn { width: 100%; justify-content: center; }
-            .result-header { flex-direction: column; }
-            .result-actions { position: absolute; top: 15px; right: 15px; }
-            .result-footer { flex-direction: column; }
-            .result-footer > * { width: 100%; text-align: center; justify-content: center; }
-            .results-stats { flex-direction: column; gap: 8px; text-align: center; }
-            .search-header { flex-direction: column; align-items: stretch; }
-            .bookmark-btn { justify-content: center; }
-            .load-status-bar { flex-direction: column; text-align: center; }
+        .search-input-lg {
+            flex: 1; padding: 16px; font-size: 1.1rem;
+            background: var(--bg-elevated); border: 2px solid var(--border);
+            color: var(--text-primary); border-radius: var(--radius-sm);
         }
+        .search-input-lg:focus { border-color: var(--accent-gold); }
         
-        .hidden { display: none !important; }
+        .quick-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+        .quick-tag {
+            padding: 6px 12px; font-size: 0.8rem;
+            background: var(--bg-deep); border: 1px solid var(--border);
+            color: var(--text-secondary); border-radius: 20px; cursor: pointer;
+            transition: all 0.2s;
+        }
+        .quick-tag:hover { background: var(--accent-blood-dim); color: white; border-color: var(--accent-blood); }
+
+        .result-list { display: flex; flex-direction: column; gap: 15px; }
+        .search-result-card {
+            background: var(--bg-card); border-radius: var(--radius);
+            border: 1px solid var(--border); border-left: 4px solid var(--accent-blood);
+            padding: 20px; transition: transform 0.2s;
+        }
+        .search-result-card:hover { transform: translateX(5px); background: var(--bg-hover); }
+        .search-result-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+        .search-result-title { font-size: 1.1rem; font-weight: 700; color: var(--accent-gold); }
+        .search-result-meta { font-size: 0.8rem; color: var(--text-dim); background: var(--bg-deep); padding: 2px 8px; border-radius: 10px; }
+        .search-result-content { font-size: 0.95rem; color: var(--text-secondary); line-height: 1.6; white-space: pre-wrap; }
+        mark { background: var(--accent-gold); color: black; border-radius: 2px; padding: 0 2px; }
+
+        /* 書籤面板 */
+        .bookmark-panel {
+            position: fixed; top: 0; right: -400px; width: 380px; max-width: 90vw; height: 100vh;
+            background: var(--bg-deep); border-left: 2px solid var(--accent-gold);
+            z-index: 1000; transition: right 0.3s ease; display: flex; flex-direction: column;
+            box-shadow: -10px 0 30px rgba(0,0,0,0.8);
+        }
+        .bookmark-panel.open { right: 0; }
+        .bookmark-overlay { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.7); z-index: 999; display: none; 
+        }
+        .bookmark-overlay.show { display: block; }
+
+        /* 其他 File 2 的必要樣式 */
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+        .tabs { display: flex; gap: 8px; margin-bottom: 18px; }
+        .tab-btn { padding: 10px 18px; border: 2px solid var(--border); background: var(--bg-deep); color: var(--text-secondary); border-radius: var(--radius-sm); cursor: pointer; }
+        .tab-btn.active { border-color: var(--accent-blood); background: var(--accent-blood-dim); color: white; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        
+        .boss-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 10px; margin-bottom: 15px; }
+        .stat-input { text-align: center; }
+        .stat-input input { text-align: center; font-weight: bold; color: var(--accent-gold); }
+        
+        /* 聊天室 */
+        .chat-box { height: 400px; display: flex; flex-direction: column; }
+        .chat-messages { flex: 1; overflow-y: auto; background: var(--bg-deep); border-radius: var(--radius-sm); padding: 15px; margin-bottom: 10px; }
+        .chat-msg { margin-bottom: 10px; display: flex; gap: 10px; }
+        .chat-msg.user { flex-direction: row-reverse; }
+        .chat-bubble { padding: 10px 14px; border-radius: 10px; font-size: 0.9rem; max-width: 80%; }
+        .chat-msg.user .chat-bubble { background: var(--accent-gold); color: black; }
+        .chat-msg.ai .chat-bubble { background: var(--bg-elevated); border: 1px solid var(--border); }
+
+        /* Loading */
+        .loading-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); z-index: 2000; justify-content: center; align-items: center; flex-direction: column; }
+        .spinner { width: 40px; height: 40px; border: 4px solid var(--border); border-top-color: var(--accent-gold); border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* 歷史紀錄 */
+        .history-item { background: var(--bg-deep); padding: 15px; border-radius: var(--radius-sm); border-left: 3px solid var(--accent-cyan); margin-bottom: 10px; cursor: pointer; transition: transform 0.2s; }
+        .history-item:hover { transform: translateX(5px); background: var(--bg-hover); }
+
+        footer { text-align: center; padding: 30px; color: var(--text-dim); font-size: 0.8rem; border-top: 1px solid var(--border); margin-top: 40px; }
+        footer a { color: var(--accent-gold); text-decoration: none; }
     </style>
 </head>
 <body>
 
 <header>
-    <div class="header-content">
-        <h1>
-            <!-- 深紅色巴士 SVG 圖標 -->
-            <svg class="bus-icon" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
-                <!-- 車身主體 -->
-                <rect x="4" y="18" width="56" height="28" rx="4" fill="#8B1E3F"/>
-                <!-- 車頂 -->
-                <rect x="8" y="14" width="48" height="6" rx="2" fill="#6B1830"/>
-                <!-- 窗戶 -->
-                <rect x="10" y="22" width="10" height="10" rx="2" fill="#1a1a2e"/>
-                <rect x="24" y="22" width="10" height="10" rx="2" fill="#1a1a2e"/>
-                <rect x="38" y="22" width="10" height="10" rx="2" fill="#1a1a2e"/>
-                <!-- 前擋風玻璃 -->
-                <rect x="50" y="22" width="8" height="12" rx="2" fill="#2a2a3e"/>
-                <!-- 車門 -->
-                <rect x="10" y="34" width="8" height="10" rx="1" fill="#6B1830"/>
-                <rect x="12" y="36" width="4" height="6" rx="1" fill="#1a1a2e"/>
-                <!-- 車燈 -->
-                <circle cx="56" cy="40" r="3" fill="#FFD060"/>
-                <circle cx="8" cy="40" r="2" fill="#FF4040"/>
-                <!-- 輪子 -->
-                <circle cx="16" cy="48" r="6" fill="#333"/>
-                <circle cx="16" cy="48" r="3" fill="#555"/>
-                <circle cx="48" cy="48" r="6" fill="#333"/>
-                <circle cx="48" cy="48" r="3" fill="#555"/>
-                <!-- 裝飾線條 -->
-                <line x1="4" y1="36" x2="60" y2="36" stroke="#FFD060" stroke-width="1"/>
-                <!-- 車牌 -->
-                <rect x="26" y="40" width="12" height="4" rx="1" fill="#222"/>
-                <text x="32" y="43.5" font-size="3" fill="#FFF" text-anchor="middle" font-family="monospace">INF</text>
-            </svg>
-            <span>無限恐怖 TRPG 規則書搜尋器</span>
-        </h1>
-        <p class="subtitle">全文檢索 · 書籤收藏 · 快速定位</p>
-    </div>
+    <h1>🚌 無限恐怖 TRPG <span class="highlight"> 綜合系統</span> <span class="version">v3.0</span></h1>
+    <p class="subtitle">規則檢索 · 戰力分析 · 戰役模擬 · 自動化輔助</p>
 </header>
 
+<!-- 頂部導航列 (保留 File 2 風格) -->
+<nav class="main-nav">
+    <div class="nav-container">
+        <!-- 新增: 搜尋器 (首頁) -->
+        <button class="nav-btn active" onclick="switchPage('search')" data-page="search">🔍 規則搜尋</button>
+        <!-- 原 File 2 功能 -->
+        <button class="nav-btn" onclick="switchPage('analyze')" data-page="analyze">⚔️ 角卡分析</button>
+        <button class="nav-btn" onclick="switchPage('boss')" data-page="boss">👹 BOSS模擬</button>
+        <button class="nav-btn" onclick="switchPage('qa')" data-page="qa">🤖 規則問答</button>
+        <button class="nav-btn" onclick="switchPage('npc')" data-page="npc">🎲 NPC生成</button>
+        <button class="nav-btn" onclick="switchPage('checklist')" data-page="checklist">✅ 設計檢查</button>
+        <button class="nav-btn" onclick="switchPage('history')" data-page="history">📊 歷史紀錄</button>
+        <button class="nav-btn" onclick="switchPage('settings')" data-page="settings">⚙️ 設定</button>
+    </div>
+</nav>
+
 <div class="container">
-    
-    <!-- 載入狀態 -->
-    <div class="load-status-bar" id="loadStatusBar">
-        <div class="status-left">
-            <div class="status-indicator loading" id="statusIndicator"></div>
-            <span class="status-text" id="statusText">正在載入規則書資料...</span>
-        </div>
-        <button class="retry-btn" id="retryBtn" onclick="loadData()">🔄 重試</button>
-        
-        <div class="fallback-upload" id="fallbackUpload">
-            <div class="fallback-hint">⚠️ 自動載入失敗？可手動選擇檔案：</div>
-            <div class="file-input-wrapper">
-                <div class="file-btn">📄 選擇 txt 檔案</div>
-                <input type="file" id="fileInput" accept=".txt">
+
+    <!-- ===== 頁面 1: 規則搜尋器 (原 File 1) ===== -->
+    <section class="page active" id="page-search">
+        <div class="card">
+            <div class="card-title">
+                <span>📚 規則書全文本檢索</span>
+                <button class="btn btn-secondary" onclick="toggleBookmarks()" style="margin-left:auto; padding:5px 10px; font-size:0.8rem;">
+                    ⭐ 我的書籤 <span id="bookmarkCount">(0)</span>
+                </button>
+            </div>
+            
+            <!-- 搜尋狀態 -->
+            <div id="rulesLoadStatus" style="margin-bottom:15px; font-size:0.9rem; color:var(--text-dim);">
+                <span id="loadIndicator" style="color:var(--warning);">●</span> <span id="loadText">正在初始化資料庫...</span>
+            </div>
+
+            <!-- 搜尋框 -->
+            <div class="search-box-large">
+                <input type="text" class="search-input-lg" id="searchInput" placeholder="輸入關鍵字... (例如: 基因鎖、B級強化、高斯手槍、生命值)">
+                <button class="btn btn-primary" id="searchBtn" onclick="performSearch()" disabled style="min-width:100px;">搜尋</button>
+            </div>
+
+            <div class="input-hint" style="margin-bottom:15px;">
+                💡 支援多詞搜尋 (空格分隔) | 點擊標籤快速搜尋
+            </div>
+
+            <!-- 快速標籤 -->
+            <div class="quick-tags">
+                <span class="quick-tag" onclick="quickSearch('基因鎖')">基因鎖</span>
+                <span class="quick-tag" onclick="quickSearch('內力')">內力</span>
+                <span class="quick-tag" onclick="quickSearch('魔力')">魔力</span>
+                <span class="quick-tag" onclick="quickSearch('精神力')">精神力</span>
+                <span class="quick-tag" onclick="quickSearch('槍械')">槍械</span>
+                <span class="quick-tag" onclick="quickSearch('傳說魔法類')">傳說魔法類</span>
+                <span class="quick-tag" onclick="quickSearch('科幻科技類')">科幻科技類</span>
+                <span class="quick-tag" onclick="quickSearch('輔助類')">輔助類</span>
             </div>
         </div>
-    </div>
-    
-    <!-- 搜尋區 -->
-    <div class="search-section" id="searchSection">
-        <div class="search-header">
-            <div class="search-title">
-                <span>🔍</span>
-                <span>規則搜尋</span>
+
+        <!-- 搜尋結果區 -->
+        <div id="searchResults" class="result-list"></div>
+        <div id="pagination" style="display:flex; justify-content:center; gap:10px; margin-top:20px;"></div>
+    </section>
+
+    <!-- ===== 頁面 2: 角卡分析 (原 File 2, 完整保留) ===== -->
+    <section class="page" id="page-analyze">
+        <div class="card">
+            <div class="card-title">📋 角卡資料輸入</div>
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchTab('sheets')">📊 Google Sheets</button>
+                <button class="tab-btn" onclick="switchTab('text')">📝 貼上文字</button>
             </div>
-            <button class="bookmark-btn" id="bookmarkBtn" onclick="toggleBookmarkPanel()">
-                <span>⭐</span>
-                <span>我的書籤</span>
-                <span class="count" id="bookmarkCount">0</span>
-            </button>
+            
+            <div class="tab-content active" id="tab-sheets">
+                <div class="input-group">
+                    <label>Google Sheets 連結</label>
+                    <div style="display:flex; gap:10px;">
+                        <input type="text" id="sheetsUrl" placeholder="貼上公開的試算表連結...">
+                        <button class="btn btn-gold" onclick="fetchSheets()">讀取</button>
+                    </div>
+                </div>
+                <div id="sheetSelector" style="display:none; margin-top:15px; border-top:1px solid var(--border); padding-top:10px;">
+                    <label style="margin-bottom:10px; display:block;">選擇要分析的角色：</label>
+                    <div class="tag-list" id="sheetTabs"></div>
+                </div>
+            </div>
+
+            <div class="tab-content" id="tab-text">
+                <textarea class="text-area" id="textInput" style="height:200px;" placeholder="直接貼上文字版角卡內容..."></textarea>
+            </div>
+
+            <div class="preview-box" id="previewBox" style="display:none; margin-top:15px;">
+                <div class="preview-header">
+                    <span class="preview-title">📄 資料預覽</span>
+                    <span class="preview-stats" id="previewStats"></span>
+                </div>
+                <div id="previewContent"></div>
+            </div>
+
+            <div class="msg error" id="analyzeError" style="display:none; margin-top:15px;"></div>
+            
+            <div class="action-row" style="margin-top:20px;">
+                <button class="btn btn-primary" onclick="analyzeCharacters()" style="flex:1;">⚔️ 分析角卡戰力</button>
+            </div>
         </div>
-        
-        <div class="search-box">
-            <input type="text" class="search-input" id="searchInput" 
-                   placeholder="輸入關鍵字搜尋... (例如: 刀劍、生命值、槍械)"
-                   maxlength="100"
-                   autocomplete="off">
-            <button class="search-btn" id="searchBtn" onclick="performSearch()" disabled>
-                <span>🔍</span>
-                <span>搜尋</span>
-            </button>
+
+        <div id="analyzeResults" style="display:none;">
+            <div class="card gold">
+                <div class="card-title">
+                    📊 分析結果
+                    <div style="margin-left:auto;">
+                        <button class="btn btn-secondary" onclick="exportResults('json')" style="font-size:0.8rem; padding:5px 10px;">💾 下載</button>
+                    </div>
+                </div>
+                <div class="chart-container"><canvas id="radarChart"></canvas></div>
+                <div id="resultsContainer"></div>
+            </div>
         </div>
-        
-        <div class="search-tips">
-            💡 搜尋技巧：用 <code>空格</code> 同時包含多個詞 | 用 <code>|</code> 符號表示「或」
+    </section>
+
+    <!-- ===== 頁面 3: BOSS 模擬 (原 File 2, 完整保留) ===== -->
+    <section class="page" id="page-boss">
+        <div class="card purple">
+            <div class="card-title">👹 BOSS 對戰模擬器</div>
+            <div class="boss-grid">
+                <div class="stat-input"><label>生命值</label><input type="number" id="bossHp" value="50"></div>
+                <div class="stat-input"><label>防禦</label><input type="number" id="bossDef" value="20"></div>
+                <div class="stat-input"><label>攻擊</label><input type="number" id="bossAtk" value="15"></div>
+                <div class="stat-input"><label>傷害</label><input type="number" id="bossDmg" value="10"></div>
+                <div class="stat-input"><label>先攻</label><input type="number" id="bossInit" value="10"></div>
+                <div class="stat-input"><label>抗性</label><input type="number" id="bossResist" value="0"></div>
+            </div>
+            <div class="input-group">
+                <label>特殊能力描述</label>
+                <textarea class="text-area" id="bossAbilities" style="height:80px;" placeholder="例如：免疫精神控制，每3回合施放全體攻擊..."></textarea>
+            </div>
+            <button class="btn btn-primary" onclick="simulateBoss()" style="width:100%; margin-top:15px;">⚔️ 開始模擬</button>
+            
+            <div class="sim-result" id="bossResult" style="display:none; margin-top:20px; background:var(--bg-deep); padding:15px; border-radius:var(--radius-sm);">
+                <h4 style="color:var(--accent-gold); margin-bottom:10px;">📊 預測結果</h4>
+                <div id="bossResultContent"></div>
+            </div>
         </div>
-        
-        <div class="quick-tags">
-            <span class="quick-tags-label">⚡ 快速搜尋：</span>
-            <button class="quick-tag" onclick="quickSearch('生命值')">生命值</button>
-            <button class="quick-tag" onclick="quickSearch('傷害')">傷害</button>
-            <button class="quick-tag" onclick="quickSearch('防禦')">防禦</button>
-            <button class="quick-tag" onclick="quickSearch('刀 劍')">刀劍</button>
-            <button class="quick-tag" onclick="quickSearch('槍')">槍械</button>
-            <button class="quick-tag" onclick="quickSearch('弓')">弓箭</button>
-            <button class="quick-tag" onclick="quickSearch('法術')">法術</button>
-            <button class="quick-tag" onclick="quickSearch('血統')">血統</button>
-            <button class="quick-tag" onclick="quickSearch('技能樹')">技能樹</button>
-            <button class="quick-tag" onclick="quickSearch('附加成功')">附加成功</button>
-            <button class="quick-tag" onclick="quickSearch('檢定')">檢定</button>
-            <button class="quick-tag" onclick="quickSearch('豁免')">豁免</button>
+        <div class="card">
+            <div class="card-title">💡 設計建議</div>
+            <div id="bossTips"><p style="color:var(--text-dim);">完成模擬後顯示建議</p></div>
         </div>
-    </div>
-    
-    <!-- 結果區 -->
-    <div class="results-container" id="resultsContainer"></div>
-    
+    </section>
+
+    <!-- ===== 頁面 4: 規則問答 (原 File 2 + 整合搜尋庫) ===== -->
+    <section class="page" id="page-qa">
+        <div class="card cyan">
+            <div class="card-title">🤖 規則書 AI 助手</div>
+            <div class="chat-box">
+                <div class="chat-messages" id="chatMessages">
+                    <div class="chat-msg ai">
+                        <div class="chat-bubble">你好！我是無限恐怖規則助手。有什麼我可以幫你的嗎？<br>你可以問我關於血統、技能、或是具體的判定規則。</div>
+                    </div>
+                </div>
+                <div class="chat-input-row" style="margin-top:10px; display:flex; gap:10px;">
+                    <input type="text" id="chatInput" placeholder="輸入問題..." onkeypress="if(event.key==='Enter')sendChat()">
+                    <button class="btn btn-gold" onclick="sendChat()">發送</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== 頁面 5: NPC 生成 (原 File 2) ===== -->
+    <section class="page" id="page-npc">
+        <div class="card">
+            <div class="card-title">🎲 快速 NPC 生成器</div>
+            <div class="form-grid">
+                <div class="input-group">
+                    <label>難度等級</label>
+                    <select id="npcDiff">
+                        <option value="minion">雜兵</option>
+                        <option value="standard" selected>標準</option>
+                        <option value="elite">精英</option>
+                        <option value="boss">頭目</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>戰鬥類型</label>
+                    <select id="npcType">
+                        <option value="melee">近戰</option>
+                        <option value="ranged">遠程</option>
+                        <option value="mage">法師</option>
+                        <option value="tank">坦克</option>
+                        <option value="assassin">刺客</option>
+                    </select>
+                </div>
+            </div>
+            <div class="input-group" style="margin-top:15px;">
+                <label>風格描述 (選填)</label>
+                <input type="text" id="npcDesc" placeholder="例如：異形生物、機械改造兵...">
+            </div>
+            <button class="btn btn-primary" onclick="generateNPC()" style="width:100%; margin-top:15px;">🎲 生成數據</button>
+            <div id="npcOutput" style="display:none; margin-top:20px; padding:20px; background:var(--bg-deep); border-radius:var(--radius-sm); white-space:pre-wrap; font-family:monospace;"></div>
+        </div>
+    </section>
+
+    <!-- ===== 頁面 6: 設計檢查 (原 File 2) ===== -->
+    <section class="page" id="page-checklist">
+        <div class="card">
+            <div class="card-title">✅ 副本設計檢查清單</div>
+            <ul class="checklist" id="checklistItems" style="list-style:none;">
+                <li style="padding:12px; border-bottom:1px solid var(--border); cursor:pointer;" onclick="this.style.color=this.style.color=='var(--success)'?'var(--text-primary)':'var(--success)'">☐ BOSS HP 是否足夠承受隊伍最高輸出？</li>
+                <li style="padding:12px; border-bottom:1px solid var(--border); cursor:pointer;" onclick="this.style.color=this.style.color=='var(--success)'?'var(--text-primary)':'var(--success)'">☐ 有沒有針對高機動/飛行角色的限制？</li>
+                <li style="padding:12px; border-bottom:1px solid var(--border); cursor:pointer;" onclick="this.style.color=this.style.color=='var(--success)'?'var(--text-primary)':'var(--success)'">☐ 有沒有反秒殺機制？（鎖血/無敵時間/多階段）</li>
+                <li style="padding:12px; border-bottom:1px solid var(--border); cursor:pointer;" onclick="this.style.color=this.style.color=='var(--success)'?'var(--text-primary)':'var(--success)'">☐ 低戰力角色是否有發揮空間？</li>
+                <li style="padding:12px; border-bottom:1px solid var(--border); cursor:pointer;" onclick="this.style.color=this.style.color=='var(--success)'?'var(--text-primary)':'var(--success)'">☐ BOSS 能否突破高防角色的防禦？</li>
+                <li style="padding:12px; border-bottom:1px solid var(--border); cursor:pointer;" onclick="this.style.color=this.style.color=='var(--success)'?'var(--text-primary)':'var(--success)'">☐ 精神力控制者的體驗？</li>
+            </ul>
+        </div>
+        <div class="card gold">
+            <div class="card-title">💡 遭遇設計建議</div>
+            <div class="input-group">
+                <label>描述場景與構想</label>
+                <textarea class="text-area" id="encounterDesc" style="height:100px;" placeholder="例如：在搖搖欲墜的吊橋上與異形女皇戰鬥..."></textarea>
+            </div>
+            <button class="btn btn-gold" onclick="getEncounterTips()" style="width:100%; margin-top:15px;">🧠 獲取 AI 建議</button>
+            <div id="encounterTips" style="display:none; margin-top:15px; padding:15px; background:var(--bg-deep); border-radius:var(--radius-sm);"></div>
+        </div>
+    </section>
+
+    <!-- ===== 頁面 7: 歷史紀錄 (原 File 2) ===== -->
+    <section class="page" id="page-history">
+        <div class="card">
+            <div class="card-title">
+                📊 分析歷史
+                <button class="btn btn-secondary" onclick="clearHistory()" style="margin-left:auto; font-size:0.8rem; padding:5px 10px;">🗑️ 清除</button>
+            </div>
+            <div id="historyList"><p style="text-align:center; padding:20px; color:var(--text-dim);">尚無紀錄</p></div>
+        </div>
+        <div class="card purple">
+            <div class="card-title">📈 角色成長追蹤</div>
+            <select id="trackSelect" style="margin-bottom:15px;">
+                <option value="">-- 請先進行分析 --</option>
+            </select>
+            <div id="trackResult"></div>
+        </div>
+    </section>
+
+    <!-- ===== 頁面 8: 設定 (原 File 2) ===== -->
+    <section class="page" id="page-settings">
+        <div class="card">
+            <div class="card-title">🔑 API 設定 <span class="save-indicator" id="saveIndicator" style="opacity:0; color:var(--success); margin-left:10px;">✓ 已儲存</span></div>
+            <div class="form-grid">
+                <div class="input-group">
+                    <label>Google Sheets API Key</label>
+                    <input type="password" id="sheetsApiKey" placeholder="AIzaSy...">
+                </div>
+                <div class="input-group">
+                    <label>Gemini API Key (Google AI)</label>
+                    <input type="password" id="geminiApiKey" placeholder="AIzaSy...">
+                </div>
+            </div>
+            <div class="msg info" style="margin-top:15px; color:var(--info); background:rgba(112,161,255,0.1); padding:10px; border-radius:var(--radius-sm);">
+                🔒 API Key 僅儲存於您的瀏覽器本地端，不會上傳至伺服器。
+            </div>
+        </div>
+    </section>
+
 </div>
 
 <footer>
-    資料來源：<a href="https://www.hktrpg.com/INF/2.35Christmas.html" target="_blank" rel="noopener noreferrer">無限恐怖 TRPG 2.35 規則書</a>
-    | 本工具僅供個人學習使用
+    <p>資料來源：<a href="https://www.hktrpg.com/INF/2.35Christmas.html" target="_blank">無限恐怖 TRPG 2.35 規則書</a></p>
+    <p> 無限恐怖綜合系統 | 僅供學習使用</p>
 </footer>
 
-<!-- 書籤面板 -->
-<div class="overlay" id="overlay" onclick="toggleBookmarkPanel()"></div>
+<!-- 浮動元件 -->
+<div class="bookmark-overlay" id="bookmarkOverlay" onclick="toggleBookmarks()"></div>
 <div class="bookmark-panel" id="bookmarkPanel">
-    <div class="bookmark-panel-header">
-        <div class="bookmark-panel-title">
-            <span>⭐</span>
-            <span>我的書籤</span>
-        </div>
-        <button class="close-panel-btn" onclick="toggleBookmarkPanel()">✕</button>
+    <div style="padding:20px; border-bottom:1px solid var(--accent-gold); display:flex; justify-content:space-between; align-items:center;">
+        <h3 style="color:var(--accent-gold);">⭐ 我的書籤</h3>
+        <button onclick="toggleBookmarks()" style="background:none; border:none; color:white; cursor:pointer; font-size:1.2rem;">✕</button>
     </div>
-    <div class="bookmark-panel-content" id="bookmarkList"></div>
+    <div id="bookmarkList" style="flex:1; overflow-y:auto; padding:15px;"></div>
+</div>
+
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="spinner"></div>
+    <div class="loading-text" id="loadingText" style="margin-top:15px; color:white;">處理中...</div>
 </div>
 
 <script>
-// ===============================================================
-// 安全措施說明：
-// 1. CSP (Content-Security-Policy) - 在 <head> 中設定，限制資源來源
-// 2. XSS 防護 - 所有使用者輸入都經過 escapeHtml() 處理
-// 3. 輸入驗證 - 限制搜尋長度、過濾特殊字元
-// 4. 安全的 DOM 操作 - 使用 textContent 而非 innerHTML (關鍵位置)
-// 5. 錯誤處理 - 不暴露技術細節給使用者
-// 6. URL 驗證 - 只允許白名單網域的連結
-// ===============================================================
-
 'use strict';
 
-// ================= 配置 =================
-const CONFIG = Object.freeze({
-    // 規則書資料檔案路徑
-    DATA_URL: './rules-2.35.txt',
+// ================= 全局配置與狀態 =================
+const CONFIG = {
+    // 規則檔案
+    RULES_URL: './rules-2.35.txt',
     
-    // 允許的外部連結網域 (白名單)
-    ALLOWED_DOMAINS: ['www.hktrpg.com', 'hktrpg.com'],
+    // API 端點
+    SHEETS_API: 'https://sheets.googleapis.com/v4/spreadsheets',
+    GEMINI_API: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
+    
+    // 儲存 Key
+    STORAGE_PREFIX: 'inf_st_v3_',
+    MAX_HISTORY: 30,
     
     // 搜尋設定
-    MAX_QUERY_LENGTH: 100,
-    MIN_QUERY_LENGTH: 1,
-    RESULTS_PER_PAGE: 15,
-    DEBOUNCE_MS: 300,
-    
-    // localStorage key
-    STORAGE_KEY: 'inf_trpg_bookmarks_v2'
-});
+    RESULTS_PER_PAGE: 15
+};
 
-// ================= 全局狀態 =================
-let allData = [];
-let currentResults = [];
-let currentPage = 1;
-let searchTerms = [];
-let bookmarks = {};
-let debounceTimer = null;
-let isDataLoaded = false;
-
-// ================= 安全工具函式 =================
-
-/**
- * HTML 實體編碼 - 防止 XSS 攻擊
- * @param {string} text - 原始文字
- * @returns {string} - 編碼後的安全文字
- */
-function escapeHtml(text) {
-    if (typeof text !== 'string') return '';
-    const map = {
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#039;',
-        '/': '&#x2F;',
-        '`': '&#x60;',
-        '=': '&#x3D;'
-    };
-    return text.replace(/[&<>"'`=\/]/g, char => map[char]);
-}
-
-/**
- * 正則表達式特殊字元跳脫
- * @param {string} string - 原始字串
- * @returns {string} - 跳脫後的字串
- */
-function escapeRegex(string) {
-    if (typeof string !== 'string') return '';
-    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-/**
- * 驗證並清理搜尋輸入
- * @param {string} input - 使用者輸入
- * @returns {string} - 清理後的輸入
- */
-function sanitizeSearchInput(input) {
-    if (typeof input !== 'string') return '';
+let state = {
+    // 規則資料
+    rulesData: [],
+    searchResults: [],
+    searchPage: 1,
+    isRulesLoaded: false,
+    bookmarks: {},
     
-    // 1. 移除首尾空白
-    let cleaned = input.trim();
-    
-    // 2. 限制長度
-    if (cleaned.length > CONFIG.MAX_QUERY_LENGTH) {
-        cleaned = cleaned.substring(0, CONFIG.MAX_QUERY_LENGTH);
-    }
-    
-    // 3. 移除控制字元和零寬字元
-    cleaned = cleaned.replace(/[\x00-\x1F\x7F\u200B-\u200D\uFEFF]/g, '');
-    
-    // 4. 標準化空白
-    cleaned = cleaned.replace(/\s+/g, ' ');
-    
-    return cleaned;
-}
-
-/**
- * 驗證 URL 是否在白名單中
- * @param {string} url - 要驗證的 URL
- * @returns {boolean} - 是否安全
- */
-function isUrlSafe(url) {
-    if (!url || typeof url !== 'string') return false;
-    
-    try {
-        const urlObj = new URL(url);
-        return CONFIG.ALLOWED_DOMAINS.includes(urlObj.hostname);
-    } catch (e) {
-        return false;
-    }
-}
-
-/**
- * 安全的錯誤日誌 (不暴露敏感資訊)
- * @param {string} context - 錯誤發生的上下文
- * @param {Error} error - 錯誤物件
- */
-function logError(context, error) {
-    // 生產環境只記錄基本資訊
-    console.error(`[${context}] 發生錯誤`);
-    // 開發時可以打開下面這行查看詳細錯誤
-    // console.error(error);
-}
+    // ST工具資料
+    sheetsData: null,
+    selectedSheets: new Set(),
+    charText: '',
+    lastAnalysis: null,
+    history: [],
+    radarChart: null
+};
 
 // ================= 初始化 =================
 document.addEventListener('DOMContentLoaded', () => {
+    // 1. UI 綁定
+    setupNavigation();
+    setupAutoSave();
+    
+    // 2. 載入資料
+    loadRules();
     loadBookmarks();
-    updateBookmarkCount();
-    setupEventListeners();
-    loadData();
+    loadApiKeys();
+    loadHistory();
+    
+    // 3. 搜尋 Enter 鍵
+    document.getElementById('searchInput').addEventListener('keypress', (e) => {
+        if(e.key === 'Enter') performSearch();
+    });
 });
 
-function setupEventListeners() {
-    const input = document.getElementById('searchInput');
-    
-    // 防抖搜尋
-    input.addEventListener('input', () => {
-        clearTimeout(debounceTimer);
-        const value = sanitizeSearchInput(input.value);
-        
-        if (value.length >= CONFIG.MIN_QUERY_LENGTH && isDataLoaded) {
-            debounceTimer = setTimeout(() => performSearch(), CONFIG.DEBOUNCE_MS);
-        }
-    });
-    
-    // Enter 搜尋
-    input.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            clearTimeout(debounceTimer);
-            performSearch();
-        }
-    });
-    
-    // 手動上傳
-    document.getElementById('fileInput').addEventListener('change', handleFileUpload);
-}
-
-// ================= 資料載入 =================
-
-async function loadData() {
-    updateLoadStatus('loading', '正在載入規則書資料...');
-    
-    try {
-        const response = await fetch(CONFIG.DATA_URL, {
-            method: 'GET',
-            mode: 'cors',
-            cache: 'default'
+// ================= UI 導航 =================
+function setupNavigation() {
+    // 頁面切換
+    window.switchPage = function(pageName) {
+        // 隱藏所有頁面
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        // 顯示目標頁面
+        document.getElementById('page-' + pageName).classList.add('active');
+        // 更新按鈕狀態
+        document.querySelectorAll('.nav-btn').forEach(b => {
+            b.classList.toggle('active', b.dataset.page === pageName);
         });
         
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
-        }
-        
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    // 分頁切換 (Sheets/Text)
+    window.switchTab = function(tabName) {
+        document.querySelectorAll('.tab-btn').forEach((b, i) => {
+            if(tabName === 'sheets') b.classList.toggle('active', i === 0);
+            else b.classList.toggle('active', i === 1);
+        });
+        document.getElementById('tab-sheets').classList.toggle('active', tabName === 'sheets');
+        document.getElementById('tab-text').classList.toggle('active', tabName === 'text');
+    };
+    
+    // 書籤面板
+    window.toggleBookmarks = function() {
+        document.getElementById('bookmarkPanel').classList.toggle('open');
+        document.getElementById('bookmarkOverlay').classList.toggle('show');
+    };
+}
+
+// 載入遮罩
+function showLoading(text) {
+    document.getElementById('loadingText').textContent = text;
+    document.getElementById('loadingOverlay').style.display = 'flex';
+}
+function hideLoading() {
+    document.getElementById('loadingOverlay').style.display = 'none';
+}
+
+// ================= 核心：規則載入與搜尋 (整合 File 1) =================
+async function loadRules() {
+    const indicator = document.getElementById('loadIndicator');
+    const text = document.getElementById('loadText');
+    
+    try {
+        const response = await fetch(CONFIG.RULES_URL);
+        if(!response.ok) throw new Error("HTTP error");
         const content = await response.text();
         
-        if (!content || content.length < 1000) {
-            throw new Error('資料內容異常');
-        }
+        parseRules(content);
         
-        parseData(content);
-        onDataLoaded();
-        
-    } catch (error) {
-        logError('loadData', error);
-        updateLoadStatus('error', '自動載入失敗，請手動選擇檔案或點擊重試');
-        document.getElementById('retryBtn').classList.add('show');
-        document.getElementById('fallbackUpload').classList.add('show');
+        state.isRulesLoaded = true;
+        indicator.style.color = 'var(--success)';
+        text.textContent = `資料庫就緒 (共 ${state.rulesData.length} 條規則)`;
+        document.getElementById('searchBtn').disabled = false;
+    } catch(e) {
+        indicator.style.color = 'var(--danger)';
+        text.textContent = '規則書載入失敗，請確認檔案';
     }
 }
 
-function handleFileUpload(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    
-    // 驗證檔案類型
-    if (!file.name.toLowerCase().endsWith('.txt')) {
-        updateLoadStatus('error', '請選擇 .txt 檔案');
-        return;
-    }
-    
-    // 驗證檔案大小 (最大 50MB)
-    if (file.size > 50 * 1024 * 1024) {
-        updateLoadStatus('error', '檔案過大，請確認是否為正確的規則書檔案');
-        return;
-    }
-    
-    updateLoadStatus('loading', '正在讀取檔案...');
-    
-    const reader = new FileReader();
-    
-    reader.onload = (e) => {
-        try {
-            parseData(e.target.result);
-            onDataLoaded();
-        } catch (error) {
-            logError('handleFileUpload', error);
-            updateLoadStatus('error', '檔案解析失敗，請確認檔案格式');
-        }
-    };
-    
-    reader.onerror = () => {
-        updateLoadStatus('error', '檔案讀取失敗');
-    };
-    
-    reader.readAsText(file, 'UTF-8');
-}
-
-function onDataLoaded() {
-    isDataLoaded = true;
-    updateLoadStatus('success', `✅ 載入成功！共 ${allData.length.toLocaleString()} 個條目`);
-    document.getElementById('searchSection').classList.add('enabled');
-    document.getElementById('searchBtn').disabled = false;
-    document.getElementById('searchInput').focus();
-    document.getElementById('retryBtn').classList.remove('show');
-    document.getElementById('fallbackUpload').classList.remove('show');
-}
-
-function updateLoadStatus(type, message) {
-    const indicator = document.getElementById('statusIndicator');
-    const text = document.getElementById('statusText');
-    
-    indicator.className = 'status-indicator ' + type;
-    text.className = 'status-text ' + type;
-    text.textContent = message;
-}
-
-// ================= 資料解析 =================
-
-function parseData(content) {
-    allData = [];
+function parseRules(content) {
+    state.rulesData = [];
     const lines = content.split('\n');
     let currentEntry = null;
     
-    for (let i = 1; i < lines.length; i++) {
+    for(let i=1; i<lines.length; i++) {
         const line = lines[i];
-        if (!line.trim()) continue;
-        
+        if(!line.trim()) continue;
         const parts = line.split('\t');
         
-        if (parts.length >= 4 && parts[2] && parts[2].includes('http')) {
-            if (currentEntry && currentEntry.content.length > 20) {
-                allData.push(currentEntry);
+        if(parts.length >= 4 && parts[2] && parts[2].includes('http')) {
+            if(currentEntry && currentEntry.content.length > 10) {
+                state.rulesData.push(currentEntry);
             }
-            
             currentEntry = {
-                category: (parts[0] || '未分類').trim().substring(0, 100),
-                filename: (parts[1] || '').trim().substring(0, 200),
+                id: state.rulesData.length,
+                category: (parts[0] || '').trim(),
+                filename: (parts[1] || '').trim(),
                 url: parts[2].trim(),
-                content: cleanContent(parts.slice(3).join('\t'))
+                content: parts.slice(3).join('\t').trim(),
+                searchText: ''
             };
-        } else if (currentEntry) {
-            currentEntry.content += '\n' + cleanContent(line);
+            currentEntry.searchText = (currentEntry.category + ' ' + currentEntry.filename + ' ' + currentEntry.content).toLowerCase();
+        } else if(currentEntry) {
+            currentEntry.content += '\n' + line.trim();
+            currentEntry.searchText += ' ' + line.trim().toLowerCase();
         }
     }
-    
-    if (currentEntry && currentEntry.content.length > 20) {
-        allData.push(currentEntry);
-    }
-    
-    // 建立索引
-    allData.forEach((entry, index) => {
-        entry.id = index;
-        entry.searchText = (entry.category + ' ' + entry.filename + ' ' + entry.content).toLowerCase();
-    });
+    if(currentEntry) state.rulesData.push(currentEntry);
 }
 
-function cleanContent(text) {
-    if (typeof text !== 'string') return '';
-    return text
-        .replace(/^["']|["']$/g, '')
-        .replace(/\r\n|\r/g, '\n')
-        .replace(/[ \t]+/g, ' ')
-        .trim();
-}
-
-// ================= 搜尋功能 =================
-
-function performSearch() {
-    if (!isDataLoaded) return;
+window.performSearch = function() {
+    if(!state.isRulesLoaded) return;
+    const query = document.getElementById('searchInput').value.trim().toLowerCase();
+    if(query.length < 1) return;
     
-    const rawQuery = document.getElementById('searchInput').value;
-    const query = sanitizeSearchInput(rawQuery);
+    const terms = query.split(/\s+/); // 空格分隔多關鍵字
     
-    if (query.length < CONFIG.MIN_QUERY_LENGTH) return;
-    
-    const startTime = performance.now();
-    
-    // 解析搜尋詞
-    let isOrSearch = false;
-    if (query.includes('|')) {
-        searchTerms = query.split('|').map(t => t.trim().toLowerCase()).filter(t => t.length > 0);
-        isOrSearch = true;
-    } else {
-        searchTerms = query.split(/\s+/).map(t => t.toLowerCase()).filter(t => t.length > 0);
-    }
-    
-    // 限制搜尋詞數量
-    if (searchTerms.length > 10) {
-        searchTerms = searchTerms.slice(0, 10);
-    }
-    
-    // 執行搜尋
-    currentResults = allData.filter(entry => {
-        if (isOrSearch) {
-            return searchTerms.some(term => entry.searchText.includes(term));
-        } else {
-            return searchTerms.every(term => entry.searchText.includes(term));
-        }
+    state.searchResults = state.rulesData.filter(item => {
+        // AND 搜尋：需包含所有關鍵字
+        return terms.every(t => item.searchText.includes(t));
     });
     
-    const searchTime = (performance.now() - startTime).toFixed(1);
-    currentPage = 1;
-    renderResults(searchTime);
-}
+    state.searchPage = 1;
+    renderSearchResults();
+};
 
-function quickSearch(query) {
-    document.getElementById('searchInput').value = query;
+window.quickSearch = function(term) {
+    document.getElementById('searchInput').value = term;
     performSearch();
-}
+};
 
-// ================= 結果渲染 =================
-
-function renderResults(searchTime) {
-    const container = document.getElementById('resultsContainer');
+function renderSearchResults() {
+    const container = document.getElementById('searchResults');
+    const results = state.searchResults;
     
-    if (currentResults.length === 0) {
-        container.innerHTML = `
-            <div class="no-results">
-                <div class="no-results-icon">🔍</div>
-                <h3>找不到符合的結果</h3>
-                <p>請嘗試其他關鍵字或減少搜尋條件</p>
-            </div>
-        `;
+    if(results.length === 0) {
+        container.innerHTML = '<div style="text-align:center; padding:30px; color:var(--text-dim);">找不到符合的規則</div>';
+        document.getElementById('pagination').innerHTML = '';
         return;
     }
     
-    const totalPages = Math.ceil(currentResults.length / CONFIG.RESULTS_PER_PAGE);
-    const startIdx = (currentPage - 1) * CONFIG.RESULTS_PER_PAGE;
-    const endIdx = Math.min(startIdx + CONFIG.RESULTS_PER_PAGE, currentResults.length);
-    const pageResults = currentResults.slice(startIdx, endIdx);
+    // 分頁
+    const start = (state.searchPage - 1) * CONFIG.RESULTS_PER_PAGE;
+    const end = Math.min(start + CONFIG.RESULTS_PER_PAGE, results.length);
+    const pageResults = results.slice(start, end);
+    const totalPages = Math.ceil(results.length / CONFIG.RESULTS_PER_PAGE);
     
-    let html = `
-        <div class="results-stats">
-            <div class="stats-count">找到 <strong>${currentResults.length.toLocaleString()}</strong> 個結果</div>
-            <div class="stats-time">耗時 ${escapeHtml(searchTime)} ms | 第 ${currentPage}/${totalPages} 頁</div>
-        </div>
-        <div class="results-list">
-    `;
+    let html = `<p style="margin-bottom:10px; font-size:0.9rem; color:var(--text-secondary);">找到 ${results.length} 筆資料 (第 ${state.searchPage}/${totalPages} 頁)</p>`;
     
-    pageResults.forEach((result) => {
-        const isBookmarked = bookmarks[result.id] !== undefined;
-        const snippet = getSnippet(result.content, searchTerms, 280);
-        const highlightedSnippet = highlightText(snippet, searchTerms);
-        
-        // 安全的 URL 處理
-        const safeUrl = isUrlSafe(result.url) ? escapeHtml(result.url) : '';
+    pageResults.forEach(item => {
+        const isBookmarked = state.bookmarks[item.id];
+        // 簡單內容預覽
+        let preview = item.content.substring(0, 300);
+        if(item.content.length > 300) preview += '...';
         
         html += `
-            <div class="result-card ${isBookmarked ? 'bookmarked' : ''}" data-id="${result.id}">
-                <div class="result-header">
-                    <div class="result-title-area">
-                        <div class="result-title">${escapeHtml(result.filename || result.category)}</div>
-                        <div class="result-category">📁 ${escapeHtml(result.category)}</div>
+            <div class="search-result-card">
+                <div class="search-result-header">
+                    <div>
+                        <div class="search-result-title">${escapeHtml(item.filename)}</div>
+                        <span class="search-result-meta">📁 ${escapeHtml(item.category)}</span>
                     </div>
-                    <div class="result-actions">
-                        <button class="star-btn ${isBookmarked ? 'active' : ''}" 
-                                onclick="toggleBookmark(${result.id})" 
-                                title="${isBookmarked ? '移除書籤' : '加入書籤'}"
-                                aria-label="${isBookmarked ? '移除書籤' : '加入書籤'}">
-                            ${isBookmarked ? '⭐' : '☆'}
-                        </button>
-                    </div>
-                </div>
-                <div class="result-content" id="content-${result.id}">
-                    ${highlightedSnippet}
-                </div>
-                <div class="result-footer">
-                    <button class="expand-btn" onclick="toggleExpand(${result.id})">
-                        <span>📖</span>
-                        <span>展開全文</span>
+                    <button onclick="toggleBookmark(${item.id})" style="background:none; border:none; font-size:1.5rem; cursor:pointer;">
+                        ${isBookmarked ? '⭐' : '☆'}
                     </button>
-                    ${safeUrl ? `<a class="link-btn" href="${safeUrl}" target="_blank" rel="noopener noreferrer"><span>🔗</span><span>查看原文</span></a>` : ''}
+                </div>
+                <div class="search-result-content">${escapeHtml(preview)}</div>
+                <div style="margin-top:10px; padding-top:10px; border-top:1px solid var(--border);">
+                    <a href="${item.url}" target="_blank" style="color:var(--accent-gold); text-decoration:none; font-size:0.9rem;">🔗 查看原始網頁</a>
                 </div>
             </div>
         `;
     });
     
-    html += '</div>';
-    
-    if (totalPages > 1) {
-        html += renderPagination(totalPages);
-    }
-    
     container.innerHTML = html;
-    window.scrollTo({ top: document.getElementById('searchSection').offsetTop - 20, behavior: 'smooth' });
+    renderPagination(totalPages);
 }
 
-function renderPagination(totalPages) {
-    let html = '<div class="pagination">';
-    
-    html += `<button class="page-btn" onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''} aria-label="上一頁">◀</button>`;
-    
-    const startPage = Math.max(1, currentPage - 2);
-    const endPage = Math.min(totalPages, currentPage + 2);
-    
-    if (startPage > 1) {
-        html += `<button class="page-btn" onclick="goToPage(1)">1</button>`;
-        if (startPage > 2) html += `<span style="color:var(--text-dim);padding:0 5px">...</span>`;
+function renderPagination(total) {
+    let html = '';
+    if(total > 1) {
+        html += `<button class="btn btn-secondary" onclick="changePage(-1)" ${state.searchPage===1?'disabled':''}>上一頁</button>`;
+        html += `<span style="align-self:center; color:var(--text-secondary);">${state.searchPage} / ${total}</span>`;
+        html += `<button class="btn btn-secondary" onclick="changePage(1)" ${state.searchPage===total?'disabled':''}>下一頁</button>`;
     }
-    
-    for (let p = startPage; p <= endPage; p++) {
-        html += `<button class="page-btn ${p === currentPage ? 'active' : ''}" onclick="goToPage(${p})">${p}</button>`;
-    }
-    
-    if (endPage < totalPages) {
-        if (endPage < totalPages - 1) html += `<span style="color:var(--text-dim);padding:0 5px">...</span>`;
-        html += `<button class="page-btn" onclick="goToPage(${totalPages})">${totalPages}</button>`;
-    }
-    
-    html += `<button class="page-btn" onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''} aria-label="下一頁">▶</button>`;
-    html += '</div>';
-    
-    return html;
+    document.getElementById('pagination').innerHTML = html;
 }
 
-function goToPage(page) {
-    if (page < 1 || page > Math.ceil(currentResults.length / CONFIG.RESULTS_PER_PAGE)) return;
-    currentPage = page;
-    renderResults('-');
-}
+window.changePage = function(delta) {
+    state.searchPage += delta;
+    renderSearchResults();
+    window.scrollTo({ top: document.getElementById('searchResults').offsetTop - 100, behavior: 'smooth' });
+};
 
-function toggleExpand(id) {
-    if (typeof id !== 'number' || id < 0 || id >= allData.length) return;
-    
-    const contentEl = document.getElementById('content-' + id);
-    if (!contentEl) return;
-    
-    const btn = contentEl.closest('.result-card').querySelector('.expand-btn');
-    const result = allData[id];
-    
-    if (contentEl.classList.contains('expanded')) {
-        contentEl.classList.remove('expanded');
-        const snippet = getSnippet(result.content, searchTerms, 280);
-        contentEl.innerHTML = highlightText(snippet, searchTerms);
-        btn.innerHTML = '<span>📖</span><span>展開全文</span>';
-    } else {
-        contentEl.classList.add('expanded');
-        contentEl.innerHTML = highlightText(result.content, searchTerms);
-        btn.innerHTML = '<span>📕</span><span>收合</span>';
-    }
-}
-
-// ================= 書籤功能 =================
-
+// ================= 書籤系統 (File 1) =================
 function loadBookmarks() {
-    try {
-        const saved = localStorage.getItem(CONFIG.STORAGE_KEY);
-        if (saved) {
-            const parsed = JSON.parse(saved);
-            // 驗證資料結構
-            if (typeof parsed === 'object' && parsed !== null) {
-                bookmarks = parsed;
-            }
-        }
-    } catch (e) {
-        logError('loadBookmarks', e);
-        bookmarks = {};
-    }
-}
-
-function saveBookmarks() {
-    try {
-        localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify(bookmarks));
-    } catch (e) {
-        logError('saveBookmarks', e);
-    }
-}
-
-function updateBookmarkCount() {
-    const count = Object.keys(bookmarks).length;
-    document.getElementById('bookmarkCount').textContent = count > 99 ? '99+' : count;
-}
-
-function toggleBookmark(id) {
-    if (typeof id !== 'number' || id < 0 || !allData[id]) return;
-    
-    const result = allData[id];
-    
-    if (bookmarks[id]) {
-        delete bookmarks[id];
-    } else {
-        bookmarks[id] = {
-            id: id,
-            filename: result.filename.substring(0, 100),
-            category: result.category.substring(0, 50),
-            url: isUrlSafe(result.url) ? result.url : '',
-            preview: result.content.substring(0, 150) + '...',
-            addedAt: Date.now()
-        };
-    }
-    
-    saveBookmarks();
+    const saved = localStorage.getItem(CONFIG.STORAGE_PREFIX + 'bookmarks');
+    if(saved) state.bookmarks = JSON.parse(saved);
     updateBookmarkCount();
-    
-    // 更新 UI
-    const card = document.querySelector(`.result-card[data-id="${id}"]`);
-    if (card) {
-        const btn = card.querySelector('.star-btn');
-        if (bookmarks[id]) {
-            card.classList.add('bookmarked');
-            btn.classList.add('active');
-            btn.innerHTML = '⭐';
-            btn.title = '移除書籤';
-        } else {
-            card.classList.remove('bookmarked');
-            btn.classList.remove('active');
-            btn.innerHTML = '☆';
-            btn.title = '加入書籤';
-        }
-    }
-    
     renderBookmarkList();
 }
 
-function toggleBookmarkPanel() {
-    const panel = document.getElementById('bookmarkPanel');
-    const overlay = document.getElementById('overlay');
-    
-    panel.classList.toggle('open');
-    overlay.classList.toggle('show');
-    
-    if (panel.classList.contains('open')) {
-        renderBookmarkList();
+window.toggleBookmark = function(id) {
+    if(state.bookmarks[id]) {
+        delete state.bookmarks[id];
+    } else {
+        const item = state.rulesData[id];
+        if(item) {
+            state.bookmarks[id] = {
+                id: item.id,
+                title: item.filename,
+                cat: item.category,
+                url: item.url
+            };
+        }
     }
+    localStorage.setItem(CONFIG.STORAGE_PREFIX + 'bookmarks', JSON.stringify(state.bookmarks));
+    updateBookmarkCount();
+    renderBookmarkList();
+    if(state.searchResults.length > 0) renderSearchResults();
+};
+
+function updateBookmarkCount() {
+    document.getElementById('bookmarkCount').textContent = `(${Object.keys(state.bookmarks).length})`;
 }
 
 function renderBookmarkList() {
     const container = document.getElementById('bookmarkList');
-    const ids = Object.keys(bookmarks);
+    const ids = Object.keys(state.bookmarks);
     
-    if (ids.length === 0) {
-        container.innerHTML = `
-            <div class="bookmark-empty">
-                <p style="font-size:2rem;margin-bottom:10px">📑</p>
-                <p>尚未收藏任何規則</p>
-                <p style="font-size:0.85rem;margin-top:10px">點擊搜尋結果的 ☆ 按鈕加入書籤</p>
-            </div>
-        `;
+    if(ids.length === 0) {
+        container.innerHTML = '<p style="text-align:center; color:var(--text-dim);">暫無書籤</p>';
         return;
     }
     
-    // 按加入時間排序 (新的在前)
-    ids.sort((a, b) => (bookmarks[b].addedAt || 0) - (bookmarks[a].addedAt || 0));
-    
     let html = '';
     ids.forEach(id => {
-        const bm = bookmarks[id];
-        const safeUrl = isUrlSafe(bm.url) ? escapeHtml(bm.url) : '';
-        
+        const bm = state.bookmarks[id];
         html += `
-            <div class="bookmark-item">
-                <div class="bookmark-item-header">
-                    <div class="bookmark-item-title">${escapeHtml(bm.filename || bm.category)}</div>
-                    <button class="remove-bookmark-btn" onclick="removeBookmark(${id})" title="移除書籤" aria-label="移除書籤">✕</button>
+            <div style="background:var(--bg-elevated); padding:10px; margin-bottom:10px; border-radius:8px; border-left:3px solid var(--accent-gold);">
+                <div style="display:flex; justify-content:space-between;">
+                    <strong style="color:var(--text-primary);">${escapeHtml(bm.title)}</strong>
+                    <button onclick="toggleBookmark(${id})" style="color:var(--danger); background:none; border:none; cursor:pointer;">✕</button>
                 </div>
-                <div class="bookmark-item-preview">${escapeHtml(bm.preview)}</div>
-                ${safeUrl ? `<a class="bookmark-item-link" href="${safeUrl}" target="_blank" rel="noopener noreferrer">🔗 查看原文</a>` : ''}
+                <div style="font-size:0.8rem; color:var(--text-dim); margin-top:5px;">
+                    ${escapeHtml(bm.cat)} | <a href="${bm.url}" target="_blank" style="color:var(--accent-ember);">連結</a>
+                </div>
             </div>
         `;
     });
-    
     container.innerHTML = html;
 }
 
-function removeBookmark(id) {
-    if (bookmarks[id]) {
-        delete bookmarks[id];
-        saveBookmarks();
-        updateBookmarkCount();
-        renderBookmarkList();
+// ================= ST 工具邏輯 (完整保留 File 2) =================
+
+// API Keys
+function loadApiKeys() {
+    const sk = localStorage.getItem(CONFIG.STORAGE_PREFIX + 'sheets_key');
+    const gk = localStorage.getItem(CONFIG.STORAGE_PREFIX + 'gemini_key');
+    if (sk) document.getElementById('sheetsApiKey').value = sk;
+    if (gk) document.getElementById('geminiApiKey').value = gk;
+}
+
+function setupAutoSave() {
+    const si = document.getElementById('sheetsApiKey');
+    const gi = document.getElementById('geminiApiKey');
+    const ind = document.getElementById('saveIndicator');
+    const save = () => {
+        localStorage.setItem(CONFIG.STORAGE_PREFIX + 'sheets_key', si.value);
+        localStorage.setItem(CONFIG.STORAGE_PREFIX + 'gemini_key', gi.value);
+        ind.style.opacity = 1;
+        setTimeout(() => ind.style.opacity = 0, 2000);
+    };
+    si.addEventListener('change', save);
+    gi.addEventListener('change', save);
+}
+
+function getKey(type) {
+    const k = document.getElementById(type + 'ApiKey')?.value?.trim();
+    if (!k) {
+        window.switchPage('settings');
+        alert('請先設定 API Key');
+        throw new Error('No API Key');
+    }
+    return k;
+}
+
+// Google Sheets Fetch
+window.fetchSheets = async function() {
+    try {
+        const key = getKey('sheets');
+        const url = document.getElementById('sheetsUrl').value;
+        const id = url.match(/[-\w]{25,}/)?.[0];
+        if(!id) throw new Error('連結無效');
         
-        // 更新搜尋結果
-        const card = document.querySelector(`.result-card[data-id="${id}"]`);
-        if (card) {
-            card.classList.remove('bookmarked');
-            const btn = card.querySelector('.star-btn');
-            if (btn) {
-                btn.classList.remove('active');
-                btn.innerHTML = '☆';
-                btn.title = '加入書籤';
+        showLoading('讀取試算表...');
+        
+        const meta = await (await fetch(`${CONFIG.SHEETS_API}/${id}?key=${key}`)).json();
+        if(meta.error) throw new Error(meta.error.message);
+        
+        const tabsContainer = document.getElementById('sheetTabs');
+        tabsContainer.innerHTML = '';
+        state.selectedSheets.clear();
+        state.sheetsData = {};
+        
+        meta.sheets.forEach(s => {
+            const title = s.properties.title;
+            const btn = document.createElement('button');
+            btn.className = 'quick-tag'; // Reuse style
+            btn.textContent = title;
+            btn.onclick = () => {
+                if(state.selectedSheets.has(title)) {
+                    state.selectedSheets.delete(title);
+                    btn.style.background = 'var(--bg-deep)';
+                    btn.style.color = 'var(--text-secondary)';
+                } else {
+                    state.selectedSheets.add(title);
+                    btn.style.background = 'var(--accent-blood)';
+                    btn.style.color = 'white';
+                }
+                updatePreview(id, key);
+            };
+            tabsContainer.appendChild(btn);
+        });
+        
+        document.getElementById('sheetSelector').style.display = 'block';
+        hideLoading();
+    } catch(e) {
+        hideLoading();
+        alert('讀取失敗: ' + e.message);
+    }
+};
+
+async function updatePreview(sheetId, key) {
+    if(state.selectedSheets.size === 0) return;
+    showLoading('下載資料...');
+    let fullText = '';
+    
+    try {
+        for(const title of state.selectedSheets) {
+            const res = await fetch(`${CONFIG.SHEETS_API}/${sheetId}/values/${encodeURIComponent(title)}?key=${key}`);
+            const data = await res.json();
+            fullText += `\n===== 角色：${title} =====\n`;
+            if(data.values) {
+                data.values.forEach(row => fullText += row.join(' | ') + '\n');
             }
         }
+        state.charText = fullText;
+        document.getElementById('previewBox').style.display = 'block';
+        document.getElementById('previewContent').textContent = fullText.substring(0, 500) + '...';
+        document.getElementById('previewStats').textContent = `${fullText.length} 字`;
+    } catch(e) {}
+    hideLoading();
+}
+
+// AI Analysis
+window.analyzeCharacters = async function() {
+    try {
+        const key = getKey('gemini');
+        const text = document.getElementById('textInput').value || state.charText;
+        if(!text) throw new Error('無資料');
+        
+        showLoading('AI 分析中 (可能需要幾秒)...');
+        
+        // 使用載入的規則書增強 Prompt
+        const keywords = extractKeywords(text);
+        const relatedRules = searchRulesForAI(keywords);
+        let ruleContext = "";
+        if(relatedRules.length > 0) {
+            ruleContext = "\n\n參考規則：\n" + relatedRules.map(r => `[${r.filename}] ${r.content.substring(0,200)}`).join('\n');
+        }
+
+        const prompt = `你是無限恐怖TRPG資深ST。分析以下角色資料：
+        ${text.substring(0, 10000)}
+        ${ruleContext}
+        
+        請回傳 JSON 格式：
+        {
+          "characters": [
+            {"name": "名字", "powerLevel": "S/A/B/C/D", "summary": "定位簡評", "stats": {"offense":8, "defense":6, "mobility":5, "control":3, "sustain":4, "utility":2}}
+          ],
+          "teamSummary": "隊伍總評"
+        }`;
+
+        const res = await fetch(`${CONFIG.GEMINI_API}?key=${key}`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+        });
+        
+        const data = await res.json();
+        const raw = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        const jsonMatch = raw.match(/```json\s*([\s\S]*?)\s*```/) || [null, raw];
+        const result = JSON.parse(jsonMatch[1] || raw);
+        
+        state.lastAnalysis = result;
+        saveHistory(result);
+        
+        // Render
+        renderRadar(result.characters);
+        let html = '';
+        result.characters.forEach(c => {
+            html += `<div style="margin-bottom:15px; border-bottom:1px solid var(--border);">
+                <h3 style="color:var(--accent-gold);">${escapeHtml(c.name)} <span style="font-size:0.8rem; background:var(--accent-blood); color:white; padding:2px 6px; border-radius:4px;">${c.powerLevel}</span></h3>
+                <p style="color:var(--text-secondary);">${escapeHtml(c.summary)}</p>
+            </div>`;
+        });
+        html += `<div style="background:var(--bg-elevated); padding:10px; border-radius:8px;"><strong>隊伍：</strong> ${escapeHtml(result.teamSummary)}</div>`;
+        
+        document.getElementById('resultsContainer').innerHTML = html;
+        document.getElementById('analyzeResults').style.display = 'block';
+        hideLoading();
+        
+    } catch(e) {
+        hideLoading();
+        document.getElementById('analyzeError').style.display = 'block';
+        document.getElementById('analyzeError').textContent = '分析失敗: ' + e.message;
     }
-}
+};
 
-// ================= 文字處理 =================
-
-function highlightText(text, terms) {
-    if (!terms || terms.length === 0) return escapeHtml(text);
+function renderRadar(chars) {
+    const ctx = document.getElementById('radarChart').getContext('2d');
+    if(state.radarChart) state.radarChart.destroy();
     
-    let result = escapeHtml(text);
+    const colors = ['rgba(196,30,58,0.5)', 'rgba(212,160,32,0.5)', 'rgba(52,152,219,0.5)'];
     
-    terms.forEach(term => {
-        if (!term || term.length === 0) return;
-        const regex = new RegExp(`(${escapeRegex(term)})`, 'gi');
-        result = result.replace(regex, '<mark>$1</mark>');
+    state.radarChart = new Chart(ctx, {
+        type: 'radar',
+        data: {
+            labels: ['輸出', '防禦', '機動', '控制', '續航', '功能'],
+            datasets: chars.slice(0,3).map((c, i) => ({
+                label: c.name,
+                data: Object.values(c.stats),
+                backgroundColor: colors[i % 3],
+                borderColor: colors[i % 3].replace('0.5','1'),
+                borderWidth: 2
+            }))
+        },
+        options: {
+            scales: { r: { min: 0, max: 10, ticks: { display: false }, grid: { color: '#333' } } },
+            plugins: { legend: { labels: { color: '#ccc' } } }
+        }
     });
-    
-    return result;
 }
 
-function getSnippet(text, terms, maxLength) {
-    if (typeof text !== 'string') return '';
-    
-    if (!terms || terms.length === 0) {
-        return text.substring(0, maxLength) + (text.length > maxLength ? '...' : '');
+// Helper: AI Context Enhancement
+function extractKeywords(text) {
+    // 簡單提取 [] 或 【】 內的關鍵字
+    const regex = /[\[【](.+?)[\]】]/g;
+    const matches = [];
+    let m;
+    while((m = regex.exec(text)) !== null) matches.push(m[1]);
+    return matches.slice(0, 5); // 取前5個
+}
+
+function searchRulesForAI(keywords) {
+    if(!keywords.length) return [];
+    return state.rulesData.filter(r => keywords.some(k => r.filename.includes(k))).slice(0, 3);
+}
+
+// BOSS 模擬
+window.simulateBoss = async function() {
+    try {
+        const key = getKey('gemini');
+        showLoading('模擬中...');
+        const hp = document.getElementById('bossHp').value;
+        const ability = document.getElementById('bossAbilities').value;
+        
+        let charContext = "";
+        if(state.lastAnalysis) {
+            charContext = "面對玩家隊伍：\n" + state.lastAnalysis.characters.map(c => `${c.name}(${c.powerLevel})`).join(', ');
+        }
+        
+        const prompt = `分析 BOSS 戰：HP ${hp}, 能力: ${ability}。\n${charContext}\n請預測：\n1. 戰鬥預計回合數\n2. 玩家勝率\n3. 風險評估 (秒殺/苦戰)\n請用 JSON: {"rounds": "3-5", "winRate": "80%", "risk": "低", "analysis": "簡評"}`;
+        
+        const res = await fetch(`${CONFIG.GEMINI_API}?key=${key}`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+        });
+        
+        const data = await res.json();
+        const raw = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        const jsonMatch = raw.match(/```json\s*([\s\S]*?)\s*```/) || [null, raw];
+        const result = JSON.parse(jsonMatch[1] || raw);
+        
+        const html = `
+            <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+                <span style="font-size:1.2rem; font-weight:bold; color:var(--accent-gold);">${result.rounds} 回合</span>
+                <span style="color:var(--success);">勝率 ${result.winRate}</span>
+            </div>
+            <p>${result.analysis}</p>
+        `;
+        document.getElementById('bossResultContent').innerHTML = html;
+        document.getElementById('bossResult').style.display = 'block';
+        hideLoading();
+    } catch(e) {
+        hideLoading();
+        alert('模擬失敗');
     }
+};
+
+// Chat
+window.sendChat = async function() {
+    const input = document.getElementById('chatInput');
+    const msg = input.value.trim();
+    if(!msg) return;
     
-    let firstPos = text.length;
-    terms.forEach(term => {
-        if (!term) return;
-        const pos = text.toLowerCase().indexOf(term.toLowerCase());
-        if (pos !== -1 && pos < firstPos) firstPos = pos;
-    });
+    input.value = '';
+    const container = document.getElementById('chatMessages');
+    container.innerHTML += `<div class="chat-msg user"><div class="chat-bubble">${escapeHtml(msg)}</div></div>`;
     
-    const start = Math.max(0, firstPos - 60);
-    const end = Math.min(text.length, start + maxLength);
-    
-    let snippet = text.substring(start, end);
-    if (start > 0) snippet = '...' + snippet;
-    if (end < text.length) snippet = snippet + '...';
-    
-    return snippet;
+    try {
+        const key = getKey('gemini');
+        const rules = state.rulesData.filter(r => r.content.includes(msg) || r.filename.includes(msg)).slice(0, 2);
+        let context = "";
+        if(rules.length) context = "參考規則:\n" + rules.map(r => r.content.substring(0, 300)).join('\n');
+        
+        const res = await fetch(`${CONFIG.GEMINI_API}?key=${key}`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ contents: [{ parts: [{ text: "回答規則問題(繁體中文): " + msg + "\n" + context }] }] })
+        });
+        
+        const data = await res.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        
+        container.innerHTML += `<div class="chat-msg ai"><div class="chat-bubble">${escapeHtml(text).replace(/\n/g, '<br>')}</div></div>`;
+        container.scrollTop = container.scrollHeight;
+    } catch(e) {
+        container.innerHTML += `<div class="chat-msg ai"><div class="chat-bubble" style="color:var(--danger);">錯誤: ${e.message}</div></div>`;
+    }
+};
+
+// NPC Gen
+window.generateNPC = async function() {
+    try {
+        const key = getKey('gemini');
+        showLoading('生成中...');
+        const diff = document.getElementById('npcDiff').value;
+        const type = document.getElementById('npcType').value;
+        const desc = document.getElementById('npcDesc').value;
+        
+        const prompt = `生成無限恐怖NPC: ${diff} ${type} ${desc}。\n請給出六圍屬性、HP、簡單技能列表。`;
+        
+        const res = await fetch(`${CONFIG.GEMINI_API}?key=${key}`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+        });
+        const data = await res.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        
+        const output = document.getElementById('npcOutput');
+        output.textContent = text;
+        output.style.display = 'block';
+        hideLoading();
+    } catch(e) {
+        hideLoading();
+        alert('生成失敗');
+    }
+};
+
+// Encounter Tips
+window.getEncounterTips = async function() {
+    try {
+        const key = getKey('gemini');
+        const desc = document.getElementById('encounterDesc').value;
+        if(!desc) return;
+        
+        showLoading('思考中...');
+        const res = await fetch(`${CONFIG.GEMINI_API}?key=${key}`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ contents: [{ parts: [{ text: "給出無限恐怖遭遇設計建議: " + desc }] }] })
+        });
+        const data = await res.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        
+        const out = document.getElementById('encounterTips');
+        out.innerHTML = escapeHtml(text).replace(/\n/g, '<br>');
+        out.style.display = 'block';
+        hideLoading();
+    } catch(e) { hideLoading(); }
+};
+
+// History
+function loadHistory() {
+    const h = localStorage.getItem(CONFIG.STORAGE_PREFIX + 'history');
+    if(h) state.history = JSON.parse(h);
+    renderHistory();
 }
+
+function saveHistory(data) {
+    const item = {
+        id: Date.now(),
+        date: new Date().toLocaleString(),
+        summary: data.teamSummary || '分析結果'
+    };
+    state.history.unshift(item);
+    if(state.history.length > CONFIG.MAX_HISTORY) state.history.pop();
+    localStorage.setItem(CONFIG.STORAGE_PREFIX + 'history', JSON.stringify(state.history));
+    renderHistory();
+}
+
+function renderHistory() {
+    const list = document.getElementById('historyList');
+    if(state.history.length === 0) {
+        list.innerHTML = '<p style="text-align:center; padding:20px; color:var(--text-dim);">尚無紀錄</p>';
+        return;
+    }
+    list.innerHTML = state.history.map(h => `
+        <div class="history-item">
+            <div style="font-weight:bold; color:var(--text-primary);">${h.date}</div>
+            <div style="font-size:0.9rem; color:var(--text-secondary);">${escapeHtml(h.summary)}</div>
+        </div>
+    `).join('');
+}
+
+window.clearHistory = function() {
+    if(confirm('確定清除？')) {
+        state.history = [];
+        localStorage.removeItem(CONFIG.STORAGE_PREFIX + 'history');
+        renderHistory();
+    }
+};
+
+// Utils
+function escapeHtml(text) {
+    if (!text) return '';
+    return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
 </script>
 
 </body>

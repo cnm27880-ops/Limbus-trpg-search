@@ -1,0 +1,1183 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- 安全標頭 -->
+    <meta http-equiv="Content-Security-Policy" content="
+        default-src 'self';
+        script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net;
+        style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+        font-src https://fonts.gstatic.com;
+        img-src 'self' data: https:;
+        connect-src 'self' https://sheets.googleapis.com https://generativelanguage.googleapis.com https://raw.githubusercontent.com;
+        frame-ancestors 'none';
+        form-action 'self';
+        base-uri 'self';
+    ">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="X-Frame-Options" content="DENY">
+    <meta http-equiv="X-XSS-Protection" content="1; mode=block">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    
+    <title>無限恐怖 ST 助手 v2.0</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    
+    <style>
+        :root {
+            --bg-abyss: #0a0a0c;
+            --bg-deep: #12121a;
+            --bg-card: #1a1a24;
+            --bg-elevated: #222230;
+            --bg-hover: #2a2a3a;
+            --accent-blood: #c41e3a;
+            --accent-blood-dim: #8b1528;
+            --accent-gold: #d4a020;
+            --accent-ember: #ff6b35;
+            --accent-purple: #9b59b6;
+            --accent-blue: #3498db;
+            --accent-cyan: #00d4aa;
+            --text-primary: #e8e8f0;
+            --text-secondary: #a0a0b0;
+            --text-dim: #606070;
+            --border: #333340;
+            --danger: #ff4757;
+            --warning: #ffa502;
+            --success: #2ed573;
+            --info: #70a1ff;
+            --radius: 16px;
+            --radius-sm: 10px;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Noto Sans TC', -apple-system, sans-serif;
+            background: var(--bg-abyss);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.7;
+        }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-abyss); }
+        ::-webkit-scrollbar-thumb { background: var(--accent-blood-dim); border-radius: 4px; }
+
+        /* Header */
+        header {
+            background: linear-gradient(135deg, var(--accent-blood-dim) 0%, var(--bg-deep) 40%, var(--bg-abyss) 100%);
+            padding: 30px 20px;
+            text-align: center;
+            border-bottom: 3px solid var(--accent-blood);
+            position: relative;
+        }
+        header::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent-gold), transparent);
+            animation: scan 3s linear infinite;
+        }
+        @keyframes scan {
+            0% { transform: translateY(0); opacity: 0; }
+            50% { opacity: 1; }
+            100% { transform: translateY(100px); opacity: 0; }
+        }
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: clamp(1.3rem, 4vw, 1.8rem);
+            font-weight: 900;
+            letter-spacing: 3px;
+            text-shadow: 0 0 20px rgba(196, 30, 58, 0.5);
+        }
+        h1 .highlight { color: var(--accent-gold); }
+        .subtitle { font-size: 0.85rem; color: var(--text-secondary); margin-top: 8px; }
+        .version { display: inline-block; padding: 2px 8px; background: var(--accent-gold); color: #000; font-size: 0.7rem; font-weight: 700; border-radius: 8px; margin-left: 8px; }
+
+        /* Navigation */
+        .main-nav {
+            background: var(--bg-deep);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            overflow-x: auto;
+        }
+        .nav-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            gap: 5px;
+            padding: 10px 15px;
+        }
+        .nav-btn {
+            padding: 10px 16px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border: none;
+            border-radius: var(--radius-sm);
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.3s;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .nav-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+        .nav-btn.active { background: var(--accent-blood-dim); color: var(--accent-gold); }
+
+        /* Container */
+        .container { max-width: 1300px; margin: 0 auto; padding: 20px 15px; }
+
+        /* Pages */
+        .page { display: none; animation: fadeIn 0.3s ease; }
+        .page.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            padding: 22px;
+            margin-bottom: 22px;
+            position: relative;
+        }
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 3px;
+            background: linear-gradient(90deg, var(--accent-blood), var(--accent-gold));
+        }
+        .card.gold::before { background: linear-gradient(90deg, var(--accent-gold), var(--accent-ember)); }
+        .card.purple::before { background: linear-gradient(90deg, var(--accent-purple), var(--accent-blue)); }
+        .card.cyan::before { background: linear-gradient(90deg, var(--accent-cyan), var(--accent-blue)); }
+        .card-title {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: var(--accent-gold);
+            margin-bottom: 18px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Forms */
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; }
+        .input-group { display: flex; flex-direction: column; gap: 6px; }
+        .input-group label { font-size: 0.85rem; color: var(--text-secondary); }
+        .input-group input, .input-group select, .input-group textarea {
+            padding: 12px 15px;
+            font-size: 0.95rem;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: var(--bg-deep);
+            color: var(--text-primary);
+            outline: none;
+            transition: border-color 0.3s;
+            font-family: inherit;
+        }
+        .input-group input:focus, .input-group select:focus, .input-group textarea:focus { border-color: var(--accent-gold); }
+        .input-group input::placeholder, .input-group textarea::placeholder { color: var(--text-dim); }
+        .input-hint { font-size: 0.75rem; color: var(--text-dim); }
+        .input-row { display: flex; gap: 10px; }
+        .input-row input { flex: 1; }
+
+        /* Buttons */
+        .btn {
+            padding: 12px 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            border: none;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-primary { background: linear-gradient(135deg, var(--accent-blood), var(--accent-blood-dim)); color: #fff; }
+        .btn-primary:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(196,30,58,0.4); }
+        .btn-gold { background: linear-gradient(135deg, var(--accent-gold), var(--accent-ember)); color: #000; }
+        .btn-gold:hover:not(:disabled) { transform: translateY(-2px); }
+        .btn-secondary { background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text-secondary); }
+        .btn-secondary:hover:not(:disabled) { background: var(--bg-hover); border-color: var(--accent-gold); color: var(--text-primary); }
+        .action-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+
+        /* Tabs */
+        .tabs { display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; }
+        .tab-btn {
+            padding: 10px 18px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: var(--bg-deep);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .tab-btn:hover { border-color: var(--accent-gold); }
+        .tab-btn.active { background: var(--accent-blood-dim); border-color: var(--accent-blood); color: #fff; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* Tags */
+        .tag-list { display: flex; flex-wrap: wrap; gap: 8px; }
+        .tag {
+            padding: 6px 14px;
+            font-size: 0.8rem;
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            background: var(--bg-elevated);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .tag:hover { border-color: var(--accent-gold); }
+        .tag.selected { background: var(--accent-blood-dim); border-color: var(--accent-blood); color: #fff; }
+
+        /* Textarea */
+        .text-area {
+            width: 100%;
+            min-height: 180px;
+            padding: 15px;
+            font-size: 0.9rem;
+            line-height: 1.8;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: var(--bg-deep);
+            color: var(--text-primary);
+            outline: none;
+            resize: vertical;
+            font-family: inherit;
+        }
+        .text-area:focus { border-color: var(--accent-gold); }
+
+        /* Preview */
+        .preview-box {
+            margin-top: 18px;
+            padding: 18px;
+            background: var(--bg-deep);
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            max-height: 350px;
+            overflow-y: auto;
+        }
+        .preview-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+        .preview-title { font-weight: 600; color: var(--accent-gold); font-size: 0.9rem; }
+        .preview-stats { font-size: 0.8rem; color: var(--text-dim); }
+        .char-card { background: var(--bg-card); border-radius: var(--radius-sm); padding: 12px; margin-bottom: 10px; border-left: 3px solid var(--accent-blood); }
+        .char-card h4 { color: var(--accent-gold); margin-bottom: 6px; font-size: 0.95rem; }
+        .char-card .notes { font-size: 0.8rem; color: var(--accent-ember); background: rgba(255,107,53,0.1); padding: 6px 10px; border-radius: 5px; margin-top: 8px; }
+
+        /* Results */
+        .result-card { background: var(--bg-card); border-radius: var(--radius); border: 1px solid var(--border); margin-bottom: 18px; overflow: hidden; }
+        .result-header { display: flex; justify-content: space-between; align-items: center; padding: 18px 22px; background: var(--bg-elevated); border-bottom: 1px solid var(--border); flex-wrap: wrap; gap: 12px; }
+        .result-name { font-size: 1.1rem; font-weight: 700; }
+        .power-level { padding: 6px 16px; font-size: 0.95rem; font-weight: 900; border-radius: 20px; font-family: 'Orbitron', sans-serif; }
+        .power-level.S { background: linear-gradient(135deg, #ffd700, #ff8c00); color: #000; }
+        .power-level.A { background: linear-gradient(135deg, #c41e3a, #8b1528); color: #fff; }
+        .power-level.B { background: linear-gradient(135deg, #9b59b6, #6c3483); color: #fff; }
+        .power-level.C { background: linear-gradient(135deg, #3498db, #2471a3); color: #fff; }
+        .power-level.D { background: linear-gradient(135deg, #27ae60, #1e8449); color: #fff; }
+        .result-body { padding: 22px; }
+        .result-section { margin-bottom: 18px; }
+        .result-section h4 { font-size: 0.9rem; color: var(--accent-gold); margin-bottom: 10px; }
+        .result-section ul { list-style: none; }
+        .result-section li { padding: 10px 14px; margin-bottom: 6px; background: var(--bg-deep); border-radius: var(--radius-sm); border-left: 3px solid var(--accent-blood-dim); font-size: 0.9rem; }
+        .result-section li.warning { border-left-color: var(--danger); background: rgba(255,71,87,0.1); }
+        .result-section li.weakness { border-left-color: var(--info); }
+        .result-section li.success { border-left-color: var(--success); }
+        .rule-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+        .rule-tag { padding: 5px 12px; font-size: 0.75rem; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 15px; color: var(--text-secondary); cursor: pointer; transition: all 0.2s; }
+        .rule-tag:hover { background: var(--accent-blood-dim); color: #fff; }
+
+        /* Chart */
+        .chart-container { position: relative; height: 320px; margin: 15px 0; }
+
+        /* BOSS Simulator */
+        .boss-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 12px; margin-bottom: 18px; }
+        .stat-input { text-align: center; }
+        .stat-input label { display: block; font-size: 0.75rem; color: var(--text-dim); margin-bottom: 4px; }
+        .stat-input input { width: 100%; padding: 10px; font-size: 1.1rem; font-weight: 700; text-align: center; border: 2px solid var(--border); border-radius: var(--radius-sm); background: var(--bg-deep); color: var(--accent-gold); }
+        .sim-result { background: var(--bg-deep); border-radius: var(--radius-sm); padding: 18px; margin-top: 18px; }
+        .sim-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); }
+        .sim-row:last-child { border-bottom: none; }
+        .sim-badge { padding: 4px 10px; border-radius: 12px; font-size: 0.8rem; font-weight: 600; }
+        .sim-badge.danger { background: rgba(255,71,87,0.2); color: var(--danger); }
+        .sim-badge.warning { background: rgba(255,165,2,0.2); color: var(--warning); }
+        .sim-badge.safe { background: rgba(46,213,115,0.2); color: var(--success); }
+
+        /* Chat */
+        .chat-box { display: flex; flex-direction: column; height: 450px; }
+        .chat-messages { flex: 1; overflow-y: auto; padding: 15px; background: var(--bg-deep); border-radius: var(--radius-sm); margin-bottom: 12px; }
+        .chat-msg { margin-bottom: 15px; display: flex; gap: 10px; }
+        .chat-msg.user { flex-direction: row-reverse; }
+        .chat-avatar { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0; }
+        .chat-msg.user .chat-avatar { background: var(--accent-gold); }
+        .chat-msg.ai .chat-avatar { background: var(--accent-blood); }
+        .chat-bubble { max-width: 75%; padding: 10px 14px; border-radius: var(--radius-sm); font-size: 0.9rem; line-height: 1.6; }
+        .chat-msg.user .chat-bubble { background: var(--accent-gold); color: #000; border-bottom-right-radius: 3px; }
+        .chat-msg.ai .chat-bubble { background: var(--bg-card); border: 1px solid var(--border); border-bottom-left-radius: 3px; }
+        .chat-input-row { display: flex; gap: 10px; }
+        .chat-input-row input { flex: 1; }
+
+        /* Checklist */
+        .checklist { list-style: none; }
+        .checklist li { padding: 12px 14px; margin-bottom: 6px; background: var(--bg-deep); border-radius: var(--radius-sm); display: flex; align-items: center; gap: 10px; cursor: pointer; transition: all 0.2s; font-size: 0.9rem; }
+        .checklist li:hover { background: var(--bg-hover); }
+        .checklist li.checked { background: rgba(46,213,115,0.1); border-left: 3px solid var(--success); }
+        .check-icon { font-size: 1.1rem; color: var(--text-dim); }
+        .checklist li.checked .check-icon { color: var(--success); }
+
+        /* History */
+        .history-item { background: var(--bg-deep); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 10px; border-left: 3px solid var(--accent-gold); cursor: pointer; transition: all 0.2s; }
+        .history-item:hover { background: var(--bg-hover); transform: translateX(4px); }
+        .history-header { display: flex; justify-content: space-between; margin-bottom: 6px; }
+        .history-title { font-weight: 600; font-size: 0.95rem; }
+        .history-date { font-size: 0.75rem; color: var(--text-dim); }
+        .history-preview { font-size: 0.8rem; color: var(--text-secondary); }
+
+        /* Messages */
+        .msg { padding: 12px 16px; border-radius: var(--radius-sm); margin-bottom: 12px; display: none; font-size: 0.9rem; }
+        .msg.show { display: block; }
+        .msg.error { background: rgba(255,71,87,0.1); border: 1px solid var(--danger); color: var(--danger); }
+        .msg.success { background: rgba(46,213,115,0.1); border: 1px solid var(--success); color: var(--success); }
+        .msg.info { background: rgba(112,161,255,0.1); border: 1px solid var(--info); color: var(--info); }
+
+        /* Loading */
+        .loading-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(10,10,12,0.92); z-index: 1000; justify-content: center; align-items: center; flex-direction: column; gap: 18px; }
+        .loading-overlay.show { display: flex; }
+        .spinner { width: 45px; height: 45px; border: 4px solid var(--border); border-top-color: var(--accent-blood); border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-text { font-size: 0.95rem; color: var(--text-secondary); }
+
+        /* Footer */
+        footer { text-align: center; padding: 22px 15px; color: var(--text-dim); font-size: 0.8rem; border-top: 1px solid var(--border); margin-top: 25px; }
+        footer a { color: var(--accent-gold); text-decoration: none; }
+        footer a:hover { text-decoration: underline; }
+
+        /* Save indicator */
+        .save-indicator { font-size: 0.75rem; color: var(--success); opacity: 0; transition: opacity 0.3s; margin-left: auto; }
+        .save-indicator.show { opacity: 1; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .nav-btn { padding: 8px 12px; font-size: 0.8rem; }
+            .form-grid { grid-template-columns: 1fr; }
+            .input-row { flex-direction: column; }
+            .action-row { flex-direction: column; }
+            .action-row .btn { width: 100%; }
+            .result-header { flex-direction: column; text-align: center; }
+            .boss-grid { grid-template-columns: repeat(3, 1fr); }
+            .chart-container { height: 260px; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>🚌 無限恐怖 <span class="highlight">ST 助手</span> <span class="version">v2.0</span></h1>
+    <p class="subtitle">角卡分析 · BOSS模擬 · 規則問答 · NPC生成 · 遭遇設計</p>
+</header>
+
+<nav class="main-nav">
+    <div class="nav-container">
+        <button class="nav-btn active" onclick="switchPage('analyze')" data-page="analyze">⚔️ 角卡分析</button>
+        <button class="nav-btn" onclick="switchPage('boss')" data-page="boss">👹 BOSS模擬</button>
+        <button class="nav-btn" onclick="switchPage('qa')" data-page="qa">📚 規則問答</button>
+        <button class="nav-btn" onclick="switchPage('npc')" data-page="npc">🎲 NPC生成</button>
+        <button class="nav-btn" onclick="switchPage('checklist')" data-page="checklist">✅ 設計檢查</button>
+        <button class="nav-btn" onclick="switchPage('history')" data-page="history">📊 歷史紀錄</button>
+        <button class="nav-btn" onclick="switchPage('settings')" data-page="settings">⚙️ 設定</button>
+    </div>
+</nav>
+
+<div class="container">
+
+    <!-- ===== 角卡分析頁 ===== -->
+    <section class="page active" id="page-analyze">
+        <div class="card">
+            <div class="card-title">📋 角卡資料輸入</div>
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchTab('sheets')">📊 Google Sheets</button>
+                <button class="tab-btn" onclick="switchTab('text')">📝 貼上文字</button>
+            </div>
+            <div class="tab-content active" id="tab-sheets">
+                <div class="input-row" style="margin-bottom: 12px;">
+                    <input type="text" id="sheetsUrl" placeholder="貼上 Google Sheets 連結...">
+                    <button class="btn btn-gold" onclick="fetchSheets()">📥 讀取</button>
+                </div>
+                <p class="input-hint">💡 試算表需設為「知道連結的人都能檢視」</p>
+                <div id="sheetSelector" style="display:none; margin-top:15px;">
+                    <label style="display:block; margin-bottom:8px; color:var(--text-secondary); font-size:0.85rem;">選擇要分析的角色：</label>
+                    <div class="tag-list" id="sheetTabs"></div>
+                </div>
+            </div>
+            <div class="tab-content" id="tab-text">
+                <textarea class="text-area" id="textInput" placeholder="直接貼上角卡內容...
+
+範例：
+========== 角色：莫爾索 ==========
+力量：6  敏捷：4  意志值：16
+特殊能力：德瑪西亞正義【備註：接觸攻擊無視護甲】"></textarea>
+            </div>
+            <div class="preview-box" id="previewBox" style="display:none;">
+                <div class="preview-header">
+                    <span class="preview-title">📄 資料預覽</span>
+                    <span class="preview-stats" id="previewStats"></span>
+                </div>
+                <div id="previewContent"></div>
+            </div>
+            <div class="msg error" id="analyzeError"></div>
+            <div class="action-row">
+                <button class="btn btn-primary" onclick="analyzeCharacters()" style="flex:2;">⚔️ 分析角卡戰力</button>
+                <button class="btn btn-secondary" onclick="window.open('index.html','_blank')">📚 規則查詢</button>
+            </div>
+        </div>
+        <div id="analyzeResults" style="display:none;">
+            <div class="card gold">
+                <div class="card-title">
+                    📊 分析結果
+                    <div style="margin-left:auto; display:flex; gap:8px;">
+                        <button class="btn btn-secondary" onclick="exportResults('discord')" style="padding:6px 12px; font-size:0.8rem;">📋 複製</button>
+                        <button class="btn btn-secondary" onclick="exportResults('json')" style="padding:6px 12px; font-size:0.8rem;">💾 JSON</button>
+                    </div>
+                </div>
+                <div class="chart-container"><canvas id="radarChart"></canvas></div>
+                <div id="resultsContainer"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== BOSS 模擬頁 ===== -->
+    <section class="page" id="page-boss">
+        <div class="card purple">
+            <div class="card-title">👹 BOSS 對戰模擬器</div>
+            <p style="color:var(--text-secondary); margin-bottom:15px; font-size:0.9rem;">輸入 BOSS 數值，預測玩家擊殺回合數</p>
+            <div class="boss-grid">
+                <div class="stat-input"><label>生命值</label><input type="number" id="bossHp" value="50"></div>
+                <div class="stat-input"><label>防禦</label><input type="number" id="bossDef" value="20"></div>
+                <div class="stat-input"><label>攻擊</label><input type="number" id="bossAtk" value="15"></div>
+                <div class="stat-input"><label>傷害</label><input type="number" id="bossDmg" value="10"></div>
+                <div class="stat-input"><label>先攻</label><input type="number" id="bossInit" value="10"></div>
+                <div class="stat-input"><label>抗性</label><input type="number" id="bossResist" value="0"></div>
+            </div>
+            <div class="input-group">
+                <label>BOSS 特殊能力（選填）</label>
+                <textarea class="text-area" id="bossAbilities" style="min-height:80px;" placeholder="如：免疫精神攻擊、每3回合恢復10HP..."></textarea>
+            </div>
+            <div class="msg error" id="bossError"></div>
+            <button class="btn btn-primary" onclick="simulateBoss()" style="width:100%; margin-top:15px;">⚔️ 開始模擬</button>
+            <div class="sim-result" id="bossResult" style="display:none;">
+                <h4 style="color:var(--accent-gold); margin-bottom:12px;">📊 模擬結果</h4>
+                <div id="bossResultContent"></div>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-title">💡 設計建議</div>
+            <div id="bossTips"><p style="color:var(--text-dim);">完成模擬後顯示建議</p></div>
+        </div>
+    </section>
+
+    <!-- ===== 規則問答頁 ===== -->
+    <section class="page" id="page-qa">
+        <div class="card cyan">
+            <div class="card-title">📚 規則書 AI 問答</div>
+            <div class="chat-box">
+                <div class="chat-messages" id="chatMessages">
+                    <div class="chat-msg ai">
+                        <div class="chat-avatar">🤖</div>
+                        <div class="chat-bubble">你好！我可以回答無限恐怖規則問題。<br><br>試試問：「擒抱規則？」「基因鎖效果？」「破甲怎麼算？」</div>
+                    </div>
+                </div>
+                <div class="chat-input-row">
+                    <input type="text" id="chatInput" placeholder="輸入問題..." onkeypress="if(event.key==='Enter')sendChat()">
+                    <button class="btn btn-gold" onclick="sendChat()">發送</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===== NPC 生成頁 ===== -->
+    <section class="page" id="page-npc">
+        <div class="card">
+            <div class="card-title">🎲 快速 NPC 生成器</div>
+            <div class="form-grid">
+                <div class="input-group">
+                    <label>難度</label>
+                    <select id="npcDiff">
+                        <option value="minion">雜兵</option>
+                        <option value="standard" selected>標準</option>
+                        <option value="elite">精英</option>
+                        <option value="boss">頭目</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>類型</label>
+                    <select id="npcType">
+                        <option value="melee">近戰</option>
+                        <option value="ranged">遠程</option>
+                        <option value="mage">法師</option>
+                        <option value="tank">坦克</option>
+                        <option value="assassin">刺客</option>
+                    </select>
+                </div>
+            </div>
+            <div class="input-group" style="margin-top:15px;">
+                <label>額外描述</label>
+                <input type="text" id="npcDesc" placeholder="如：異形風格、擅長潛行...">
+            </div>
+            <div class="msg error" id="npcError"></div>
+            <button class="btn btn-primary" onclick="generateNPC()" style="width:100%; margin-top:15px;">🎲 生成 NPC</button>
+            <div id="npcOutput" style="display:none; margin-top:18px; padding:18px; background:var(--bg-deep); border-radius:var(--radius-sm); white-space:pre-wrap; font-size:0.9rem; line-height:1.8;"></div>
+        </div>
+    </section>
+
+    <!-- ===== 設計檢查頁 ===== -->
+    <section class="page" id="page-checklist">
+        <div class="card">
+            <div class="card-title">✅ 副本設計檢查清單</div>
+            <ul class="checklist" id="checklistItems">
+                <li onclick="toggleCheck(this)"><span class="check-icon">☐</span>BOSS HP 是否足夠承受隊伍最高輸出？</li>
+                <li onclick="toggleCheck(this)"><span class="check-icon">☐</span>有沒有針對高機動角色的限制？</li>
+                <li onclick="toggleCheck(this)"><span class="check-icon">☐</span>有沒有反秒殺機制？（分階段/無敵時間）</li>
+                <li onclick="toggleCheck(this)"><span class="check-icon">☐</span>低戰力角色有發揮空間嗎？</li>
+                <li onclick="toggleCheck(this)"><span class="check-icon">☐</span>BOSS 能突破高防角色嗎？</li>
+                <li onclick="toggleCheck(this)"><span class="check-icon">☐</span>精神攻擊對高意志角色有效嗎？</li>
+                <li onclick="toggleCheck(this)"><span class="check-icon">☐</span>戰場有利用價值嗎？</li>
+                <li onclick="toggleCheck(this)"><span class="check-icon">☐</span>有備案方案嗎？</li>
+                <li onclick="toggleCheck(this)"><span class="check-icon">☐</span>考慮過玩家的隱藏底牌嗎？</li>
+            </ul>
+            <div class="action-row">
+                <button class="btn btn-secondary" onclick="resetChecklist()">🔄 重置</button>
+            </div>
+        </div>
+        <div class="card gold">
+            <div class="card-title">💡 AI 遭遇建議</div>
+            <div class="input-group">
+                <label>描述你想設計的遭遇</label>
+                <textarea class="text-area" id="encounterDesc" style="min-height:100px;" placeholder="如：廢棄醫院的變異護士戰鬥..."></textarea>
+            </div>
+            <div class="msg error" id="encounterError"></div>
+            <button class="btn btn-gold" onclick="getEncounterTips()" style="width:100%; margin-top:12px;">🧠 獲取建議</button>
+            <div id="encounterTips" style="display:none; margin-top:15px; padding:15px; background:var(--bg-deep); border-radius:var(--radius-sm);"></div>
+        </div>
+    </section>
+
+    <!-- ===== 歷史紀錄頁 ===== -->
+    <section class="page" id="page-history">
+        <div class="card">
+            <div class="card-title">
+                📊 分析歷史
+                <button class="btn btn-secondary" onclick="clearHistory()" style="margin-left:auto; padding:6px 12px; font-size:0.8rem;">🗑️ 清除</button>
+            </div>
+            <div id="historyList"><p style="color:var(--text-dim); text-align:center; padding:30px;">尚無紀錄</p></div>
+        </div>
+        <div class="card purple">
+            <div class="card-title">📈 角色成長追蹤</div>
+            <p style="color:var(--text-secondary); font-size:0.85rem; margin-bottom:12px;">比較同一角色不同時間的變化</p>
+            <select id="trackSelect" style="width:100%; padding:10px; background:var(--bg-deep); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text-primary);">
+                <option value="">-- 完成分析後可選擇 --</option>
+            </select>
+            <div id="trackResult" style="display:none; margin-top:15px;"></div>
+        </div>
+    </section>
+
+    <!-- ===== 設定頁 ===== -->
+    <section class="page" id="page-settings">
+        <div class="card">
+            <div class="card-title">🔑 API 設定 <span class="save-indicator" id="saveIndicator">✓ 已儲存</span></div>
+            <div class="form-grid">
+                <div class="input-group">
+                    <label>Google Sheets API Key</label>
+                    <input type="password" id="sheetsApiKey" placeholder="AIzaSy...">
+                    <span class="input-hint">讀取試算表用</span>
+                </div>
+                <div class="input-group">
+                    <label>Gemini API Key</label>
+                    <input type="password" id="geminiApiKey" placeholder="AIzaSy...">
+                    <span class="input-hint">AI 分析用</span>
+                </div>
+            </div>
+            <div class="msg info" style="display:block; margin-top:15px;">🔒 API Key 僅存於本機瀏覽器</div>
+        </div>
+        <div class="card">
+            <div class="card-title">📖 規則書狀態</div>
+            <div id="rulesStatus"><p style="color:var(--text-dim);">載入中...</p></div>
+        </div>
+    </section>
+
+</div>
+
+<footer>
+    <a href="index.html">📖 規則查詢</a> | 
+    <a href="https://www.hktrpg.com/INF/2.35Christmas.html" target="_blank">規則書來源</a>
+    <p style="margin-top:6px;">僅供學習使用 · v2.0</p>
+</footer>
+
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="spinner"></div>
+    <div class="loading-text" id="loadingText">處理中...</div>
+</div>
+
+<script>
+'use strict';
+
+// ===== 配置 =====
+const CONFIG = Object.freeze({
+    STORAGE_PREFIX: 'inf_st_',
+    SHEETS_API: 'https://sheets.googleapis.com/v4/spreadsheets',
+    GEMINI_API: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
+    RULES_URL: './rules-2.35.txt',
+    MAX_INPUT: 50000,
+    MAX_RULES: 12000,
+    MAX_HISTORY: 30,
+});
+
+// ===== 狀態 =====
+let state = {
+    sheetsData: null,
+    selectedSheets: new Set(),
+    rulesData: [],
+    charText: '',
+    lastAnalysis: null,
+    radarChart: null,
+    history: [],
+};
+
+// ===== 安全工具 =====
+function escapeHtml(t) {
+    if (typeof t !== 'string') return '';
+    return t.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[c]);
+}
+
+function sanitize(t, max = CONFIG.MAX_INPUT) {
+    if (typeof t !== 'string') return '';
+    return t.trim().substring(0, max).replace(/[\x00-\x1F\x7F]/g, '');
+}
+
+// ===== 初始化 =====
+document.addEventListener('DOMContentLoaded', () => {
+    loadApiKeys();
+    setupAutoSave();
+    loadRules();
+    loadHistory();
+    renderHistory();
+});
+
+// ===== 頁面切換 =====
+function switchPage(name) {
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.page === name));
+    document.querySelectorAll('.page').forEach(p => p.classList.toggle('active', p.id === 'page-' + name));
+}
+
+function switchTab(name) {
+    document.querySelectorAll('#page-analyze .tab-btn').forEach((b, i) => b.classList.toggle('active', (name === 'sheets' ? i === 0 : i === 1)));
+    document.getElementById('tab-sheets').classList.toggle('active', name === 'sheets');
+    document.getElementById('tab-text').classList.toggle('active', name === 'text');
+}
+
+// ===== API Key =====
+function loadApiKeys() {
+    const sk = localStorage.getItem(CONFIG.STORAGE_PREFIX + 'sheets_key');
+    const gk = localStorage.getItem(CONFIG.STORAGE_PREFIX + 'gemini_key');
+    if (sk) document.getElementById('sheetsApiKey').value = sk;
+    if (gk) document.getElementById('geminiApiKey').value = gk;
+}
+
+function setupAutoSave() {
+    const si = document.getElementById('sheetsApiKey');
+    const gi = document.getElementById('geminiApiKey');
+    const ind = document.getElementById('saveIndicator');
+    const save = () => {
+        localStorage.setItem(CONFIG.STORAGE_PREFIX + 'sheets_key', si.value);
+        localStorage.setItem(CONFIG.STORAGE_PREFIX + 'gemini_key', gi.value);
+        ind.classList.add('show');
+        setTimeout(() => ind.classList.remove('show'), 2000);
+    };
+    si.addEventListener('change', save);
+    gi.addEventListener('change', save);
+}
+
+function getKey(type) {
+    const k = document.getElementById(type + 'ApiKey')?.value?.trim();
+    if (!k) throw new Error('請先在設定頁填入 ' + (type === 'sheets' ? 'Google Sheets' : 'Gemini') + ' API Key');
+    return k;
+}
+
+// ===== 規則書 =====
+async function loadRules() {
+    const el = document.getElementById('rulesStatus');
+    try {
+        const res = await fetch(CONFIG.RULES_URL);
+        if (!res.ok) throw new Error();
+        const txt = await res.text();
+        parseRules(txt);
+        el.innerHTML = '<p style="color:var(--success)">✅ 載入成功，共 ' + state.rulesData.length + ' 條</p>';
+    } catch (e) {
+        el.innerHTML = '<p style="color:var(--warning)">⚠️ 規則書載入失敗，AI功能仍可用</p>';
+    }
+}
+
+function parseRules(content) {
+    const lines = content.split('\n');
+    let cur = null;
+    for (let i = 1; i < lines.length; i++) {
+        const line = lines[i];
+        if (!line.trim()) continue;
+        const parts = line.split('\t');
+        if (parts.length >= 4 && parts[2]?.includes('http')) {
+            if (cur?.content?.length > 20) state.rulesData.push(cur);
+            cur = { category: (parts[0] || '').trim(), filename: (parts[1] || '').trim(), content: parts.slice(3).join(' ').trim() };
+        } else if (cur) {
+            cur.content += ' ' + line.trim();
+        }
+    }
+    if (cur?.content?.length > 20) state.rulesData.push(cur);
+    state.rulesData.forEach((e, i) => { e.id = i; e.search = (e.category + ' ' + e.filename + ' ' + e.content).toLowerCase(); });
+}
+
+function searchRules(keywords) {
+    if (!keywords?.length) return [];
+    const terms = keywords.map(k => k.toLowerCase());
+    const res = [];
+    state.rulesData.forEach(e => {
+        const score = terms.filter(t => e.search.includes(t)).length;
+        if (score > 0) res.push({ ...e, score });
+    });
+    res.sort((a, b) => b.score - a.score);
+    return res.slice(0, 12);
+}
+
+function extractKeywords(text) {
+    const kw = new Set();
+    const patterns = [/【([^】]+)】/g, /「([^」]+)」/g, /『([^』]+)』/g, /特殊能力[：:]\s*(\S+)/g, /專長[：:]\s*(\S+)/g];
+    patterns.forEach(p => { let m; while ((m = p.exec(text)) !== null) if (m[1]?.length > 1 && m[1].length < 20) kw.add(m[1]); });
+    ['傳奇屬性', '基因鎖', '附加成功', '破甲', '破魔'].forEach(t => { if (text.includes(t)) kw.add(t); });
+    return Array.from(kw);
+}
+
+// ===== Google Sheets =====
+async function fetchSheets() {
+    const key = getKey('sheets');
+    const url = sanitize(document.getElementById('sheetsUrl').value, 500);
+    if (!url) { showError('analyzeError', '請貼上連結'); return; }
+    const id = extractSheetId(url);
+    if (!id) { showError('analyzeError', '無效連結'); return; }
+    showLoading('讀取試算表...');
+    hideError('analyzeError');
+    try {
+        const meta = await (await fetch(CONFIG.SHEETS_API + '/' + id + '?key=' + key)).json();
+        if (meta.error) throw new Error(meta.error.message);
+        const sheets = meta.sheets || [];
+        if (!sheets.length) throw new Error('無分頁');
+        displaySheetTabs(sheets);
+        state.sheetsData = {};
+        for (const s of sheets) {
+            const title = s.properties.title;
+            showLoading('讀取：' + title);
+            const [dataRes, notesRes] = await Promise.all([
+                fetch(CONFIG.SHEETS_API + '/' + id + '/values/' + encodeURIComponent(title) + '?key=' + key),
+                fetch(CONFIG.SHEETS_API + '/' + id + '?ranges=' + encodeURIComponent(title) + '&fields=sheets(data(rowData(values(note))))&key=' + key)
+            ]);
+            if (dataRes.ok) {
+                const data = await dataRes.json();
+                const notes = notesRes.ok ? extractNotes(await notesRes.json()) : {};
+                state.sheetsData[title] = { values: data.values || [], notes };
+            }
+        }
+        updatePreview();
+        hideLoading();
+    } catch (e) {
+        hideLoading();
+        showError('analyzeError', '讀取失敗：' + e.message);
+    }
+}
+
+function extractSheetId(url) {
+    const m = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/) || url.match(/\/d\/([a-zA-Z0-9-_]+)/);
+    return m ? m[1] : null;
+}
+
+function extractNotes(data) {
+    const notes = {};
+    const rows = data?.sheets?.[0]?.data?.[0]?.rowData;
+    if (!rows) return notes;
+    rows.forEach((r, ri) => r.values?.forEach((c, ci) => { if (c.note) notes[ri + '-' + ci] = c.note; }));
+    return notes;
+}
+
+function displaySheetTabs(sheets) {
+    const el = document.getElementById('sheetTabs');
+    el.innerHTML = sheets.map(s => '<button class="tag selected" onclick="toggleSheet(this,\'' + escapeHtml(s.properties.title) + '\')">' + escapeHtml(s.properties.title) + '</button>').join('');
+    document.getElementById('sheetSelector').style.display = 'block';
+    state.selectedSheets = new Set(sheets.map(s => s.properties.title));
+}
+
+function toggleSheet(btn, name) {
+    btn.classList.toggle('selected');
+    state.selectedSheets.has(name) ? state.selectedSheets.delete(name) : state.selectedSheets.add(name);
+    updatePreview();
+}
+
+function updatePreview() {
+    const box = document.getElementById('previewBox');
+    const content = document.getElementById('previewContent');
+    const stats = document.getElementById('previewStats');
+    if (!state.sheetsData || !state.selectedSheets.size) { box.style.display = 'none'; state.charText = ''; return; }
+    let html = '', cells = 0, notes = 0;
+    state.selectedSheets.forEach(name => {
+        const s = state.sheetsData[name];
+        if (!s) return;
+        cells += s.values.flat().filter(v => v).length;
+        notes += Object.keys(s.notes).length;
+        html += '<div class="char-card"><h4>📋 ' + escapeHtml(name) + '</h4><div style="font-size:0.8rem; color:var(--text-secondary); max-height:80px; overflow:hidden;">' + s.values.slice(0, 8).map(r => escapeHtml(r.filter(c => c).join(' | ').substring(0, 120))).join('<br>') + '</div>' + (Object.keys(s.notes).length ? '<div class="notes">' + Object.values(s.notes).slice(0, 2).map(n => escapeHtml(n.substring(0, 60))).join(' / ') + '</div>' : '') + '</div>';
+    });
+    content.innerHTML = html;
+    stats.textContent = state.selectedSheets.size + ' 角色 · ' + cells + ' 格 · ' + notes + ' 備註';
+    box.style.display = 'block';
+    state.charText = buildCharText();
+}
+
+function buildCharText() {
+    if (!state.sheetsData) return '';
+    let t = '';
+    state.selectedSheets.forEach(name => {
+        const s = state.sheetsData[name];
+        if (!s) return;
+        t += '\n\n===== 角色：' + name + ' =====\n\n';
+        s.values.forEach((row, ri) => {
+            const rt = row.map((c, ci) => { let x = c || ''; const n = s.notes[ri + '-' + ci]; if (n) x += '【備註：' + n + '】'; return x; }).filter(c => c).join('\t');
+            if (rt.trim()) t += rt + '\n';
+        });
+    });
+    return t;
+}
+
+// ===== 角卡分析 =====
+async function analyzeCharacters() {
+    const key = getKey('gemini');
+    const textInput = sanitize(document.getElementById('textInput').value);
+    const finalText = state.charText || textInput;
+    if (!finalText) { showError('analyzeError', '請先輸入角卡資料'); return; }
+    showLoading('AI 分析中...');
+    hideError('analyzeError');
+    try {
+        const kw = extractKeywords(finalText);
+        const rules = searchRules(kw);
+        const prompt = buildPrompt(finalText, rules);
+        const result = await callGemini(prompt, key);
+        state.lastAnalysis = { data: result, time: Date.now(), kw };
+        saveHistory(result);
+        displayResults(result);
+        hideLoading();
+    } catch (e) {
+        hideLoading();
+        showError('analyzeError', '分析失敗：' + e.message);
+    }
+}
+
+function buildPrompt(charData, rules) {
+    let rc = '';
+    if (rules.length) {
+        rc = '\n\n## 相關規則\n';
+        let len = 0;
+        for (const r of rules) {
+            const t = '【' + (r.filename || r.category) + '】\n' + r.content.substring(0, 500) + '\n\n';
+            if (len + t.length > CONFIG.MAX_RULES) break;
+            rc += t;
+            len += t.length;
+        }
+    }
+    return '你是無限恐怖 TRPG 資深 ST，請分析角色卡。\n\n## 角色資料\n' + charData.substring(0, 20000) + rc + '\n\n請用 JSON 回覆：\n```json\n{"characters":[{"name":"角色名","powerLevel":"S/A/B/C/D","summary":"定位","stats":{"offense":1-10,"defense":1-10,"mobility":1-10,"control":1-10,"sustain":1-10,"utility":1-10},"coreAbilities":["能力"],"warnings":["⚠️警告"],"weaknesses":["弱點"],"suggestions":["建議"],"relatedRules":["關鍵字"]}],"teamSummary":{"overallPower":"評估","composition":"組成","synergies":["combo"],"gaps":["缺失"]}}\n```\n評級：S=秒殺BOSS, A=高優化, B=有強項, C=均衡, D=新手\n用繁體中文，注意備註中的隱藏能力。';
+}
+
+async function callGemini(prompt, key) {
+    const res = await fetch(CONFIG.GEMINI_API + '?key=' + key, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.7, maxOutputTokens: 8192 } })
+    });
+    if (!res.ok) { const e = await res.json(); throw new Error(e.error?.message || 'API失敗'); }
+    const data = await res.json();
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) throw new Error('無回應');
+    const m = text.match(/```json\s*([\s\S]*?)\s*```/);
+    if (m) return JSON.parse(m[1]);
+    try { return JSON.parse(text); } catch { return { raw: text }; }
+}
+
+function displayResults(data) {
+    const container = document.getElementById('resultsContainer');
+    const section = document.getElementById('analyzeResults');
+    if (data.raw) { container.innerHTML = '<div style="white-space:pre-wrap;">' + escapeHtml(data.raw) + '</div>'; section.style.display = 'block'; return; }
+    if (data.characters?.length) renderRadar(data.characters);
+    let html = '';
+    data.characters?.forEach(c => { html += renderChar(c); });
+    if (data.teamSummary) html += renderTeam(data.teamSummary);
+    container.innerHTML = html;
+    section.style.display = 'block';
+    section.scrollIntoView({ behavior: 'smooth' });
+    updateTrackSelect(data.characters);
+}
+
+function renderChar(c) {
+    const lv = c.powerLevel?.charAt(0) || 'C';
+    return '<div class="result-card"><div class="result-header"><span class="result-name">' + escapeHtml(c.name || '?') + '</span><span class="power-level ' + lv + '">' + escapeHtml(c.powerLevel || '?') + '</span></div><div class="result-body"><p style="color:var(--text-secondary); margin-bottom:12px;">' + escapeHtml(c.summary || '') + '</p>' + (c.coreAbilities?.length ? '<div class="result-section"><h4>⚔️ 核心能力</h4><ul>' + c.coreAbilities.map(a => '<li>' + escapeHtml(a) + '</li>').join('') + '</ul></div>' : '') + (c.warnings?.length ? '<div class="result-section"><h4>⚠️ ST警告</h4><ul>' + c.warnings.map(w => '<li class="warning">' + escapeHtml(w) + '</li>').join('') + '</ul></div>' : '') + (c.weaknesses?.length ? '<div class="result-section"><h4>🎯 弱點</h4><ul>' + c.weaknesses.map(w => '<li class="weakness">' + escapeHtml(w) + '</li>').join('') + '</ul></div>' : '') + (c.suggestions?.length ? '<div class="result-section"><h4>💡 建議</h4><ul>' + c.suggestions.map(s => '<li class="success">' + escapeHtml(s) + '</li>').join('') + '</ul></div>' : '') + (c.relatedRules?.length ? '<div class="rule-tags">' + c.relatedRules.map(r => '<button class="rule-tag" onclick="window.open(\'index.html?q=' + encodeURIComponent(r) + '\',\'_blank\')">' + escapeHtml(r) + '</button>').join('') + '</div>' : '') + '</div></div>';
+}
+
+function renderTeam(s) {
+    return '<div class="result-card" style="border-top:3px solid var(--accent-gold);"><div class="result-header" style="background:linear-gradient(135deg,rgba(212,160,32,0.15),var(--bg-card));"><span class="result-name">📊 隊伍總評</span></div><div class="result-body"><p style="margin-bottom:8px;"><strong>整體：</strong>' + escapeHtml(s.overallPower || '') + '</p><p style="margin-bottom:12px;"><strong>組成：</strong>' + escapeHtml(s.composition || '') + '</p>' + (s.synergies?.length ? '<div class="result-section"><h4>🔗 Combo</h4><ul>' + s.synergies.map(x => '<li>' + escapeHtml(x) + '</li>').join('') + '</ul></div>' : '') + (s.gaps?.length ? '<div class="result-section"><h4>⚡ 補強</h4><ul>' + s.gaps.map(x => '<li class="weakness">' + escapeHtml(x) + '</li>').join('') + '</ul></div>' : '') + '</div></div>';
+}
+
+function renderRadar(chars) {
+    const ctx = document.getElementById('radarChart').getContext('2d');
+    if (state.radarChart) state.radarChart.destroy();
+    const colors = ['rgba(196,30,58,0.7)', 'rgba(212,160,32,0.7)', 'rgba(155,89,182,0.7)', 'rgba(52,152,219,0.7)', 'rgba(46,213,115,0.7)', 'rgba(255,107,53,0.7)'];
+    const datasets = chars.slice(0, 6).map((c, i) => ({
+        label: c.name || '角色' + (i + 1),
+        data: [c.stats?.offense || 5, c.stats?.defense || 5, c.stats?.mobility || 5, c.stats?.control || 5, c.stats?.sustain || 5, c.stats?.utility || 5],
+        borderColor: colors[i],
+        backgroundColor: colors[i].replace('0.7', '0.2'),
+        borderWidth: 2,
+        pointRadius: 3,
+    }));
+    state.radarChart = new Chart(ctx, {
+        type: 'radar',
+        data: { labels: ['輸出', '防禦', '機動', '控制', '續航', '功能'], datasets },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: { r: { min: 0, max: 10, ticks: { stepSize: 2, color: '#606070' }, grid: { color: '#333340' }, pointLabels: { color: '#a0a0b0', font: { size: 11 } } } },
+            plugins: { legend: { position: 'bottom', labels: { color: '#e8e8f0', padding: 12, font: { size: 11 } } } }
+        }
+    });
+}
+
+// ===== BOSS 模擬 =====
+async function simulateBoss() {
+    if (!state.lastAnalysis?.data?.characters?.length) { showError('bossError', '請先完成角卡分析'); return; }
+    const key = getKey('gemini');
+    const boss = {
+        hp: parseInt(document.getElementById('bossHp').value) || 50,
+        def: parseInt(document.getElementById('bossDef').value) || 20,
+        atk: parseInt(document.getElementById('bossAtk').value) || 15,
+        dmg: parseInt(document.getElementById('bossDmg').value) || 10,
+        init: parseInt(document.getElementById('bossInit').value) || 10,
+        resist: parseInt(document.getElementById('bossResist').value) || 0,
+        abilities: sanitize(document.getElementById('bossAbilities').value, 800)
+    };
+    showLoading('模擬戰鬥...');
+    hideError('bossError');
+    try {
+        const charSum = state.lastAnalysis.data.characters.map(c => c.name + ':' + c.powerLevel + ',' + c.summary).join('\n');
+        const prompt = '作為無限恐怖ST，分析以下BOSS戰：\n\nBOSS: HP=' + boss.hp + ', 防禦=' + boss.def + ', 攻擊=' + boss.atk + ', 傷害=' + boss.dmg + ', 先攻=' + boss.init + (boss.abilities ? ', 能力=' + boss.abilities : '') + '\n\n玩家:\n' + charSum + '\n\n原始數據:\n' + (state.charText?.substring(0, 8000) || '') + '\n\n用JSON回覆：\n```json\n{"predictions":[{"name":"角色","rounds":"回合數","threat":"danger/warning/safe","reason":"原因"}],"bossAdjustments":{"recommendedHp":數值,"recommendedDef":數值,"mechanics":["機制"],"warnings":["注意"]},"tips":["建議"]}\n```\nthreat: danger=1-2回合秒, warning=3-5回合, safe=較久。繁中回答。';
+        const result = await callGemini(prompt, key);
+        displayBossResult(result);
+        hideLoading();
+    } catch (e) {
+        hideLoading();
+        showError('bossError', '模擬失敗：' + e.message);
+    }
+}
+
+function displayBossResult(data) {
+    const content = document.getElementById('bossResultContent');
+    const tips = document.getElementById('bossTips');
+    const box = document.getElementById('bossResult');
+    if (data.raw) { content.innerHTML = '<div style="white-space:pre-wrap;">' + escapeHtml(data.raw) + '</div>'; box.style.display = 'block'; return; }
+    let html = '';
+    data.predictions?.forEach(p => {
+        html += '<div class="sim-row"><span style="font-weight:600;">' + escapeHtml(p.name) + '</span><span class="sim-badge ' + p.threat + '">' + escapeHtml(p.rounds) + ' 回合</span></div><div style="font-size:0.8rem; color:var(--text-dim); padding:4px 0 12px; border-bottom:1px solid var(--border);">' + escapeHtml(p.reason) + '</div>';
+    });
+    content.innerHTML = html;
+    box.style.display = 'block';
+    let th = '';
+    if (data.bossAdjustments) {
+        const a = data.bossAdjustments;
+        th += '<p style="margin-bottom:8px;"><strong>建議HP:</strong> <span style="color:var(--accent-ember);">' + (a.recommendedHp || '—') + '</span> | <strong>建議防禦:</strong> <span style="color:var(--accent-ember);">' + (a.recommendedDef || '—') + '</span></p>';
+        if (a.mechanics?.length) th += '<p style="margin-bottom:8px;"><strong>建議機制:</strong> ' + a.mechanics.map(m => escapeHtml(m)).join('、') + '</p>';
+        if (a.warnings?.length) th += '<p style="color:var(--danger);"><strong>⚠️ 注意:</strong> ' + a.warnings.map(w => escapeHtml(w)).join('、') + '</p>';
+    }
+    if (data.tips?.length) th += '<div style="margin-top:12px;"><strong>💡 設計建議:</strong><ul style="margin-top:6px; padding-left:18px;">' + data.tips.map(t => '<li style="margin-bottom:4px;">' + escapeHtml(t) + '</li>').join('') + '</ul></div>';
+    tips.innerHTML = th || '<p style="color:var(--text-dim);">無額外建議</p>';
+}
+
+// ===== 規則問答 =====
+async function sendChat() {
+    const input = document.getElementById('chatInput');
+    const q = sanitize(input.value, 500);
+    if (!q) return;
+    input.value = '';
+    const msgs = document.getElementById('chatMessages');
+    msgs.innerHTML += '<div class="chat-msg user"><div class="chat-avatar">👤</div><div class="chat-bubble">' + escapeHtml(q) + '</div></div>';
+    msgs.scrollTop = msgs.scrollHeight;
+    try {
+        const key = getKey('gemini');
+        const rules = searchRules(q.split(/\s+/));
+        let rc = '';
+        if (rules.length) {
+            rc = '\n\n相關規則：\n';
+            rules.slice(0, 8).forEach(r => { rc += '【' + r.filename + '】' + r.content.substring(0, 400) + '\n'; });
+        }
+        const prompt = '你是無限恐怖TRPG規則專家。回答以下問題，用繁體中文，簡潔明瞭。\n\n問題：' + q + rc;
+        const result = await callGemini(prompt, key);
+        const ans = result.raw || (typeof result === 'string' ? result : JSON.stringify(result));
+        msgs.innerHTML += '<div class="chat-msg ai"><div class="chat-avatar">🤖</div><div class="chat-bubble">' + escapeHtml(ans).replace(/\n/g, '<br>') + '</div></div>';
+    } catch (e) {
+        msgs.innerHTML += '<div class="chat-msg ai"><div class="chat-avatar">🤖</div><div class="chat-bubble" style="color:var(--danger);">錯誤：' + escapeHtml(e.message) + '</div></div>';
+    }
+    msgs.scrollTop = msgs.scrollHeight;
+}
+
+// ===== NPC 生成 =====
+async function generateNPC() {
+    const key = getKey('gemini');
+    const diff = document.getElementById('npcDiff').value;
+    const type = document.getElementById('npcType').value;
+    const desc = sanitize(document.getElementById('npcDesc').value, 300);
+    showLoading('生成NPC...');
+    hideError('npcError');
+    try {
+        const prompt = '為無限恐怖TRPG生成一個NPC敵人。\n難度：' + diff + '\n類型：' + type + (desc ? '\n描述：' + desc : '') + '\n\n請提供：\n1. 名稱和描述\n2. 屬性數值（力量、敏捷、耐力、智力、感知、決心）\n3. 生命值、防禦、攻擊檢定、傷害、先攻\n4. 特殊能力（2-3個）\n5. 戰術建議\n\n用繁體中文，格式清晰。';
+        const result = await callGemini(prompt, key);
+        const text = result.raw || (typeof result === 'string' ? result : JSON.stringify(result, null, 2));
+        document.getElementById('npcOutput').style.display = 'block';
+        document.getElementById('npcOutput').textContent = text;
+        hideLoading();
+    } catch (e) {
+        hideLoading();
+        showError('npcError', '生成失敗：' + e.message);
+    }
+}
+
+// ===== 設計檢查 =====
+function toggleCheck(li) {
+    li.classList.toggle('checked');
+    li.querySelector('.check-icon').textContent = li.classList.contains('checked') ? '☑' : '☐';
+}
+
+function resetChecklist() {
+    document.querySelectorAll('#checklistItems li').forEach(li => {
+        li.classList.remove('checked');
+        li.querySelector('.check-icon').textContent = '☐';
+    });
+}
+
+async function getEncounterTips() {
+    const desc = sanitize(document.getElementById('encounterDesc').value, 1000);
+    if (!desc) { showError('encounterError', '請描述遭遇'); return; }
+    const key = getKey('gemini');
+    showLoading('分析中...');
+    hideError('encounterError');
+    try {
+        let charInfo = '';
+        if (state.lastAnalysis?.data?.characters) {
+            charInfo = '\n\n玩家隊伍：\n' + state.lastAnalysis.data.characters.map(c => c.name + '(' + c.powerLevel + '): ' + c.summary).join('\n');
+        }
+        const prompt = '作為無限恐怖ST，為以下遭遇提供設計建議：\n\n' + desc + charInfo + '\n\n請提供：\n1. 遭遇平衡建議\n2. 敵人配置建議\n3. 特殊機制建議\n4. 可能的問題和對策\n5. 戲劇性增強建議\n\n用繁體中文。';
+        const result = await callGemini(prompt, key);
+        const text = result.raw || (typeof result === 'string' ? result : JSON.stringify(result));
+        document.getElementById('encounterTips').style.display = 'block';
+        document.getElementById('encounterTips').innerHTML = escapeHtml(text).replace(/\n/g, '<br>');
+        hideLoading();
+    } catch (e) {
+        hideLoading();
+        showError('encounterError', '失敗：' + e.message);
+    }
+}
+
+// ===== 歷史紀錄 =====
+function loadHistory() {
+    try {
+        const h = localStorage.getItem(CONFIG.STORAGE_PREFIX + 'history');
+        if (h) state.history = JSON.parse(h);
+    } catch (e) { state.history = []; }
+}
+
+function saveHistory(data) {
+    if (!data?.characters?.length) return;
+    const item = {
+        id: Date.now(),
+        time: new Date().toLocaleString('zh-TW'),
+        chars: data.characters.map(c => ({ name: c.name, level: c.powerLevel })),
+        data
+    };
+    state.history.unshift(item);
+    if (state.history.length > CONFIG.MAX_HISTORY) state.history = state.history.slice(0, CONFIG.MAX_HISTORY);
+    localStorage.setItem(CONFIG.STORAGE_PREFIX + 'history', JSON.stringify(state.history));
+    renderHistory();
+}
+
+function renderHistory() {
+    const el = document.getElementById('historyList');
+    if (!state.history.length) { el.innerHTML = '<p style="color:var(--text-dim); text-align:center; padding:30px;">尚無紀錄</p>'; return; }
+    el.innerHTML = state.history.map(h => '<div class="history-item" onclick="loadHistoryItem(' + h.id + ')"><div class="history-header"><span class="history-title">' + h.chars.map(c => escapeHtml(c.name) + '(' + c.level + ')').join(', ') + '</span><span class="history-date">' + escapeHtml(h.time) + '</span></div></div>').join('');
+}
+
+function loadHistoryItem(id) {
+    const item = state.history.find(h => h.id === id);
+    if (item?.data) {
+        state.lastAnalysis = { data: item.data, time: item.id };
+        displayResults(item.data);
+        switchPage('analyze');
+    }
+}
+
+function clearHistory() {
+    if (confirm('確定清除所有歷史紀錄？')) {
+        state.history = [];
+        localStorage.removeItem(CONFIG.STORAGE_PREFIX + 'history');
+        renderHistory();
+    }
+}
+
+function updateTrackSelect(chars) {
+    const sel = document.getElementById('trackSelect');
+    if (!chars?.length) return;
+    sel.innerHTML = '<option value="">-- 選擇角色 --</option>' + chars.map(c => '<option value="' + escapeHtml(c.name) + '">' + escapeHtml(c.name) + '</option>').join('');
+}
+
+// ===== 匯出 =====
+function exportResults(format) {
+    if (!state.lastAnalysis?.data) return;
+    const data = state.lastAnalysis.data;
+    if (format === 'discord') {
+        let text = '**📊 角卡分析結果**\n\n';
+        data.characters?.forEach(c => {
+            text += '**' + c.name + '** [' + c.powerLevel + ']\n' + c.summary + '\n';
+            if (c.warnings?.length) text += '⚠️ ' + c.warnings.join('\n⚠️ ') + '\n';
+            text += '\n';
+        });
+        if (data.teamSummary) text += '**隊伍總評:** ' + data.teamSummary.overallPower + '\n';
+        navigator.clipboard.writeText(text).then(() => alert('已複製到剪貼簿！'));
+    } else {
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'analysis_' + new Date().toISOString().slice(0, 10) + '.json';
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+}
+
+// ===== 工具 =====
+function showLoading(text) {
+    document.getElementById('loadingText').textContent = text;
+    document.getElementById('loadingOverlay').classList.add('show');
+}
+function hideLoading() { document.getElementById('loadingOverlay').classList.remove('show'); }
+function showError(id, msg) { const el = document.getElementById(id); el.textContent = msg; el.classList.add('show'); }
+function hideError(id) { document.getElementById(id).classList.remove('show'); }
+</script>
+</body>
+</html>
